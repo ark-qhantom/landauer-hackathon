@@ -1,0 +1,5 @@
+# Core demo runs with just these:
+pyyaml>=6
+rich>=13
+# Optional — only needed to flip the Stripe earn loop from SIMULATED to REAL test-mode:
+stripe>=8

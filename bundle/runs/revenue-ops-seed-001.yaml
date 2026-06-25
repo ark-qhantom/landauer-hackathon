@@ -1,0 +1,191 @@
+# Protos Revenue Ops Seed 001 — Stronger Redundant Money Making Demo
+# Pivot from pure creative visuals to high-volume, repeatable, lucrative ops that generate real revenue.
+# This better shows "redundant money making methods": lead qualification, outreach, conversion tracking, client billing.
+# Still uses the governance model, Stripe for real monetization, skill compounding, human allocation, spawning.
+# Domain: Autonomous Lead-to-Revenue Micro-Agency for service businesses (e.g. contractors, consultants, creators).
+# Fits hackathon: agents earn (clients pay for qualified leads/calls), spend (tools/research via Stripe if needed), run real ops (outreach, tracking, fulfillment), at scale via compounding + spawn.
+# Presentation can still use dreamy framing in video to make the "boring" ops feel mythic and meaningful.
+
+run_id: revenue-ops-seed-001
+name: Revenue Ops Seed 001 — Lead-to-Revenue Micro-Agency
+goal: Launch and operate a high-volume, repeatable lead qualification and conversion service for small service businesses. Deliver qualified leads and booked calls, charge clients via real Stripe infrastructure, compound the ops skill for better conversion rates, allocate revenue under human control (including re-seeding), and demonstrate scaling via agent spawning. Focus on redundant, measurable, lucrative tasks that free the client business owner for ambitious work.
+
+budget:
+  monthly_limit_usd: 300
+  current_spend_usd: 0
+  currency: usd
+
+guardrails:
+  no_live_charges_without_approval: true
+  no_public_posting_without_approval: true
+  no_paid_subscription_without_approval: true
+  no_raw_credential_exposure: true
+  prefer_test_mode_for_payments: true
+
+allowed_capabilities:
+  - hermes
+  - local_model
+  - gpt_api
+  - browser
+  - web_search
+  - lead_research
+  - lead_qualification
+  - outreach_draft
+  - stripe_revenue_setup
+  - conversion_tracking
+  - quality_review
+  - skill_compound
+  - agent_spawn
+  - human_approval
+
+offer_seed:
+  name: LeadForge Micro-Agency
+  category: revenue_ops_lead_gen
+  audience: Small service businesses (contractors, consultants, coaches, creators) that need steady qualified leads but can't afford or manage full sales teams.
+  one_liner: High-volume, governed agent team that researches, qualifies, and converts leads into booked calls — charged per qualified lead or subscription. Measurable ROI, no slop.
+  target_price_usd: 49   # per qualified lead, or $299/mo subscription for volume
+  prospects_per_cycle: 50   # size of the researched prospect pool each cycle (drives the funnel math)
+  deliverables:
+    - List of 20-50 researched prospects with qualification scores
+    - Personalized outreach sequences (email/DM)
+    - Booked discovery calls (tracked conversions)
+    - Monthly performance report with ROI metrics
+    - Client dashboard access for tracking
+
+proposed_actions:
+  - id: research-market
+    title: Research target vertical, ideal client profile, and high-conversion lead sources
+    capability_need: lead_research
+    est_cost_usd: 0
+    sensitivity:
+      involves_spend: false
+      involves_public_post: false
+      involves_payment_activation: false
+      involves_subscription: false
+      involves_credentials: false
+
+  - id: build-prospect-list
+    title: Generate and enrich a list of 50 potential clients using web search and browser tools
+    capability_need: lead_research
+    est_cost_usd: 5
+    sensitivity:
+      involves_spend: true
+      involves_public_post: false
+      involves_payment_activation: false
+      involves_subscription: false
+      involves_credentials: false
+
+  - id: qualify-leads
+    title: Score and qualify the list (fit, budget signals, timing) using research tools and model
+    capability_need: lead_qualification
+    est_cost_usd: 3
+    sensitivity:
+      involves_spend: true
+      involves_public_post: false
+      involves_payment_activation: false
+      involves_subscription: false
+      involves_credentials: false
+
+  - id: draft-outreach
+    title: Create personalized outreach sequences for top qualified leads
+    capability_need: outreach_draft
+    est_cost_usd: 2
+    sensitivity:
+      involves_spend: true
+      involves_public_post: false
+      involves_payment_activation: false
+      involves_subscription: false
+      involves_credentials: false
+
+  - id: setup-client-billing
+    title: For each new client business, set up Stripe subscription or per-lead billing using Hermes Stripe skills
+    capability_need: stripe_revenue_setup
+    est_cost_usd: 0
+    sensitivity:
+      involves_spend: false
+      involves_public_post: false
+      involves_payment_activation: true
+      involves_subscription: true
+      involves_credentials: true
+
+  - id: send-outreach-track
+    title: Execute outreach (simulated or via tools), track responses and conversions
+    capability_need: conversion_tracking
+    est_cost_usd: 0
+    sensitivity:
+      involves_spend: false
+      involves_public_post: true   # if public DMs
+      involves_payment_activation: false
+      involves_subscription: false
+      involves_credentials: false
+
+  - id: quality-review-leads
+    title: Human reviews top leads and outreach for brand/quality before sending or billing
+    capability_need: quality_review
+    est_cost_usd: 0
+    sensitivity:
+      involves_spend: false
+      involves_public_post: false
+      involves_payment_activation: false
+      involves_subscription: false
+      involves_credentials: false
+
+  - id: compound-ops-skill
+    title: After cycle, compound the lead-qualification and outreach skill with what drove actual conversions
+    capability_need: skill_compound
+    est_cost_usd: 0
+    sensitivity:
+      involves_spend: false
+      involves_public_post: false
+      involves_payment_activation: false
+      involves_subscription: false
+      involves_credentials: false
+
+  - id: allocate-revenue
+    title: Human allocates revenue from client payments (e.g. company ops, re-seed agents, tools)
+    capability_need: human_approval
+    est_cost_usd: 0
+    sensitivity:
+      involves_spend: false
+      involves_public_post: false
+      involves_payment_activation: false
+      involves_subscription: false
+      involves_credentials: false
+
+  - id: seed-volume-agent
+    title: Allocate portion of revenue to spawn a volume-focused sub-agent for scaling lead volume
+    capability_need: agent_spawn
+    est_cost_usd: 40
+    sensitivity:
+      involves_spend: true
+      involves_public_post: false
+      involves_payment_activation: false
+      involves_subscription: false
+      involves_credentials: false
+
+  # Over-budget test for governance — cumulative spend (5+3+2+40+300=350) must exceed the $300 limit
+  # so the engine BLOCKS this even if a human pre-approves it. This is the headline hard-stop demo.
+  - id: scale-to-500-leads
+    title: Immediately scale to 500 leads this month across 10 clients
+    capability_need: lead_research
+    est_cost_usd: 300
+    sensitivity:
+      involves_spend: true
+      involves_public_post: false
+      involves_payment_activation: false
+      involves_subscription: false
+      involves_credentials: false
+
+# Prior-cycle performance baseline (REAL inputs from the previous run, used to prove compounding).
+# Cycle N reads these, the compounded skill applies a learned heuristic, and cycle N+1 measurably beats them.
+prior_cycle_metrics:
+  qualify_rate: 0.30        # 30% of prospects qualified last cycle
+  book_rate: 0.20           # 20% of qualified leads booked a call
+  learned_cause: ""          # populated by the compounded skill each cycle
+
+# Notes for demo/video:
+# - This shows redundant money making: lead research/qualification/outreach/tracking is high-volume, repeatable, measurable (conversion rates, ROI), lucrative (recurring client payments).
+# - Stronger viability for hackathon than pure creative because ROI is numeric and ops are "boring but reliable".
+# - Still uses full Protos governance, real Stripe for client billing (earn side), skill compounding, human allocation, spawning.
+# - Presentation: Use dreamy framing in video to position this as "the mythic invisible engine that powers ambitious builders".
+# - In real deployment: Agents run 24/7, intake via form or email, deliver leads/calls, bill via Stripe, improve over time.
