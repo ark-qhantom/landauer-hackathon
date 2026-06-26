@@ -1,0 +1,12 @@
+# Landauer physics model — the energy contract this skill runs under (enforced by the engine).
+energy_budget:
+  monthly_energy_limit_joules: 50000
+  thermal_limit_c: 85
+  regime: workstation   # laptop | workstation | dgx | jetson
+power_envelope:   # MODELED projection envelope — CALIBRATE from real nvidia-smi on the target GPU
+  idle_w: 60.0
+  max_w: 200.0
+telemetry:
+  provider: nvidia-smi      # REAL measured Joules on NVIDIA hardware
+  fallback: deterministic   # labeled MODELED on non-GPU boxes (never reported as REAL)
+  integrate: trapezoidal    # energy = integral of power over time (Joules)

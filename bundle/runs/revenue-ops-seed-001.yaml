@@ -5,6 +5,10 @@
 # Domain: Autonomous Lead-to-Revenue Micro-Agency for service businesses (e.g. contractors, consultants, creators).
 # Fits hackathon: agents earn (clients pay for qualified leads/calls), spend (tools/research via Stripe if needed), run real ops (outreach, tracking, fulfillment), at scale via compounding + spawn.
 # Presentation can still use dreamy framing in video to make the "boring" ops feel mythic and meaningful.
+#
+# LANDAUER: this run now declares a physical ENERGY budget (Joules) alongside the money budget. Each action
+# carries a `physics:` profile used to PROJECT its energy cost (MODELED). The energy cap is an independent
+# cumulative hard stop — see the gpu-render-batch action, which is cheap in money but blocked on physics.
 
 run_id: revenue-ops-seed-001
 name: Revenue Ops Seed 001 — Lead-to-Revenue Micro-Agency
@@ -14,6 +18,14 @@ budget:
   monthly_limit_usd: 300
   current_spend_usd: 0
   currency: usd
+
+# Physical energy budget — the twin of `budget`, in Joules. Both are independent cumulative hard stops:
+# either one alone blocks an action, and human --approve can bypass neither.
+energy_budget:
+  monthly_energy_limit_joules: 50000   # Joules. Calibrate from real nvidia-smi on the RTX 4070 (idle + sustained max).
+  current_energy_joules: 0
+  thermal_limit_c: 85                  # optional instantaneous cap (°C); enforced in a later slice
+  regime: workstation                  # laptop | workstation | dgx | jetson — same framework, different scale
 
 guardrails:
   no_live_charges_without_approval: true
@@ -52,6 +64,9 @@ offer_seed:
     - Monthly performance report with ROI metrics
     - Client dashboard access for tracking
 
+# Each action's `physics:` (est_intensity 0..1, est_duration_s) projects a MODELED energy cost:
+#   E ≈ (idle_W + intensity*(max_W - idle_W)) * duration_s   (idle/max calibrated from the GPU).
+# Light ops (research/qualify/draft) cost a few hundred to ~1.4k J each; the cumulative stays well under 50kJ.
 proposed_actions:
   - id: research-market
     title: Research target vertical, ideal client profile, and high-conversion lead sources
@@ -63,6 +78,7 @@ proposed_actions:
       involves_payment_activation: false
       involves_subscription: false
       involves_credentials: false
+    physics: {est_intensity: 0.1, est_duration_s: 5, irreversible: false}
 
   - id: build-prospect-list
     title: Generate and enrich a list of 50 potential clients using web search and browser tools
@@ -74,6 +90,7 @@ proposed_actions:
       involves_payment_activation: false
       involves_subscription: false
       involves_credentials: false
+    physics: {est_intensity: 0.2, est_duration_s: 8, irreversible: false}
 
   - id: qualify-leads
     title: Score and qualify the list (fit, budget signals, timing) using research tools and model
@@ -85,6 +102,7 @@ proposed_actions:
       involves_payment_activation: false
       involves_subscription: false
       involves_credentials: false
+    physics: {est_intensity: 0.3, est_duration_s: 10, irreversible: false}
 
   - id: draft-outreach
     title: Create personalized outreach sequences for top qualified leads
@@ -96,6 +114,7 @@ proposed_actions:
       involves_payment_activation: false
       involves_subscription: false
       involves_credentials: false
+    physics: {est_intensity: 0.2, est_duration_s: 6, irreversible: false}
 
   - id: setup-client-billing
     title: For each new client business, set up Stripe subscription or per-lead billing using Hermes Stripe skills
@@ -107,6 +126,7 @@ proposed_actions:
       involves_payment_activation: true
       involves_subscription: true
       involves_credentials: true
+    physics: {est_intensity: 0.05, est_duration_s: 3, irreversible: false}
 
   - id: send-outreach-track
     title: Execute outreach (simulated or via tools), track responses and conversions
@@ -118,6 +138,7 @@ proposed_actions:
       involves_payment_activation: false
       involves_subscription: false
       involves_credentials: false
+    physics: {est_intensity: 0.1, est_duration_s: 4, irreversible: false}
 
   - id: quality-review-leads
     title: Human reviews top leads and outreach for brand/quality before sending or billing
@@ -129,6 +150,7 @@ proposed_actions:
       involves_payment_activation: false
       involves_subscription: false
       involves_credentials: false
+    physics: {est_intensity: 0.0, est_duration_s: 0, irreversible: false}
 
   - id: compound-ops-skill
     title: After cycle, compound the lead-qualification and outreach skill with what drove actual conversions
@@ -140,6 +162,7 @@ proposed_actions:
       involves_payment_activation: false
       involves_subscription: false
       involves_credentials: false
+    physics: {est_intensity: 0.4, est_duration_s: 12, irreversible: true}   # path-merge finalizes state
 
   - id: allocate-revenue
     title: Human allocates revenue from client payments (e.g. company ops, re-seed agents, tools)
@@ -151,6 +174,7 @@ proposed_actions:
       involves_payment_activation: false
       involves_subscription: false
       involves_credentials: false
+    physics: {est_intensity: 0.0, est_duration_s: 0, irreversible: false}
 
   - id: seed-volume-agent
     title: Allocate portion of revenue to spawn a volume-focused sub-agent for scaling lead volume
@@ -162,9 +186,26 @@ proposed_actions:
       involves_payment_activation: false
       involves_subscription: false
       involves_credentials: false
+    physics: {est_intensity: 0.2, est_duration_s: 8, irreversible: true}   # spawning finalizes state
 
-  # Over-budget test for governance — cumulative spend (5+3+2+40+300=350) must exceed the $300 limit
-  # so the engine BLOCKS this even if a human pre-approves it. This is the headline hard-stop demo.
+  # Over-ENERGY test for physics governance — the twin of the over-budget test below. This action is CHEAP
+  # in money ($5, well under the $300 limit) but projects ~100,000 J (intensity 1.0 × 500 s at full GPU),
+  # which exceeds the 50,000 J energy cap. The engine BLOCKS it on physics ALONE even if a human --approves
+  # it. This is the headline: money would have allowed it; the physics cap refused it. Caps are orthogonal.
+  - id: gpu-render-batch
+    title: Render/train a large batch at max GPU to "accelerate" lead scoring this cycle
+    capability_need: local_model
+    est_cost_usd: 5
+    sensitivity:
+      involves_spend: true
+      involves_public_post: false
+      involves_payment_activation: false
+      involves_subscription: false
+      involves_credentials: false
+    physics: {est_intensity: 1.0, est_duration_s: 500, irreversible: false}
+
+  # Over-budget test for governance — cumulative spend (5+3+2+40+5+300=355) must exceed the $300 limit
+  # so the engine BLOCKS this even if a human pre-approves it. This is the MONEY hard-stop demo.
   - id: scale-to-500-leads
     title: Immediately scale to 500 leads this month across 10 clients
     capability_need: lead_research
@@ -175,6 +216,7 @@ proposed_actions:
       involves_payment_activation: false
       involves_subscription: false
       involves_credentials: false
+    physics: {est_intensity: 0.1, est_duration_s: 5, irreversible: false}
 
 # Prior-cycle performance baseline (REAL inputs from the previous run, used to prove compounding).
 # Cycle N reads these, the compounded skill applies a learned heuristic, and cycle N+1 measurably beats them.
@@ -187,5 +229,6 @@ prior_cycle_metrics:
 # - This shows redundant money making: lead research/qualification/outreach/tracking is high-volume, repeatable, measurable (conversion rates, ROI), lucrative (recurring client payments).
 # - Stronger viability for hackathon than pure creative because ROI is numeric and ops are "boring but reliable".
 # - Still uses full Protos governance, real Stripe for client billing (earn side), skill compounding, human allocation, spawning.
+# - DUAL CAPS: money ($300) blocks scale-to-500-leads; physics energy (50,000 J) blocks gpu-render-batch — independently, both surviving --approve.
 # - Presentation: Use dreamy framing in video to position this as "the mythic invisible engine that powers ambitious builders".
 # - In real deployment: Agents run 24/7, intake via form or email, deliver leads/calls, bill via Stripe, improve over time.

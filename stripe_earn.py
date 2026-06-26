@@ -13,7 +13,7 @@ their own Stripe test dashboard. No live key is ever used.
 
 KEY-OPTIONAL: with a Stripe sk_test_ key (env STRIPE_API_KEY, or in ~/.hermes/.env, or ./.env) and
 the `stripe` package installed, this runs for real. Without them it returns the SAME shape clearly
-labeled status="simulated" so the demo never breaks — but the dashboard must show that label.
+labeled status="dry_run" (shown as DRY-RUN) so the demo never breaks — but the dashboard must show that label.
 
 Provision (Dylan, ~2 min):  pip install stripe ; export STRIPE_API_KEY=sk_test_...
 Run standalone:             python3 stripe_earn.py
@@ -54,24 +54,24 @@ def _simulated(offer_name: str, price_usd: float, reason: str) -> Dict[str, Any]
     cents = int(round(price_usd * 100))
     # Realistic SHAPE, explicitly fake ids and status. The dashboard must render the 'simulated' label.
     return {
-        "status": "simulated",
+        "status": "dry_run",
         "reason": reason,
         "mode": "test",
         "currency": "usd",
         "offer_name": offer_name,
         "price_usd": price_usd,
         "ids": {
-            "product": "prod_SIMULATED",
-            "price": "price_SIMULATED",
-            "payment_link": "plink_SIMULATED",
-            "payment_intent": "pi_SIMULATED",
-            "charge": "ch_SIMULATED",
-            "balance_txn": "txn_SIMULATED",
+            "product": "prod_DRYRUN",
+            "price": "price_DRYRUN",
+            "payment_link": "plink_DRYRUN",
+            "payment_intent": "pi_DRYRUN",
+            "charge": "ch_DRYRUN",
+            "balance_txn": "txn_DRYRUN",
         },
-        "payment_link_url": "https://buy.stripe.com/test_SIMULATED",
+        "payment_link_url": "https://buy.stripe.com/test_DRYRUN",
         "amount_captured_cents": cents,
         "net_cents": int(round(cents * 0.971)) - 30,   # rough Stripe 2.9% + 30c, for display realism
-        "note": "SIMULATED — provide a Stripe sk_test_ key + `pip install stripe` to produce real, verifiable ids.",
+        "note": "DRY-RUN — provide a Stripe sk_test_ key + `pip install stripe` to produce real, verifiable ids.",
     }
 
 

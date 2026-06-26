@@ -77,10 +77,10 @@ def fulfill_lead_ops_cycle(brief: str, skill: str = "revenue-ops-lead-to-revenue
 
     if not real:
         return {
-            "status": "simulated",
+            "status": "dry_run",
             "skill_used": f"{skill} (local Hermes skill)",
             "prompt_used": prompt,
-            "output": ("[SIMULATED — Hermes not invoked] Sample qualified lead: 'Northgate Roofing', "
+            "output": ("[DRY-RUN — Hermes not invoked] Sample qualified lead: 'Northgate Roofing', "
                        "trigger=hailstorm permit spike (last 14d), fit 9/10, budget signal high, timing now. "
                        "Outreach opener references the permit spike directly. Value: 1 booked-call-ready lead."),
             "note": "Default mode. Run the runner with --real-hermes to invoke Hermes for real.",
@@ -121,7 +121,7 @@ def demo_link_cli_spend(amount_usd: float, merchant: str, real: bool = False,
     This is link-cli's correct use. Earning (client billing) lives in stripe_earn.py, not here."""
     if not real:
         return {
-            "status": "simulated",
+            "status": "dry_run",
             "tool": "@stripe/link-cli (test mode)",
             "flow": [f"agent: spend-request create --merchant '{merchant}' --amount {int(amount_usd*100)} --request-approval",
                      "human: approves in the Link app on phone (agent CANNOT self-approve)",

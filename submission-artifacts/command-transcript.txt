@@ -1,0 +1,6 @@
+# Commands used to produce these artifacts (Mac dev box, MODELED fallback)
+# Real nvidia-smi artifacts come from the 4070 session — see ../4070-CAPTURE.md
+
+python3 runner.py --no-real-stripe --approve scale-to-500-leads gpu-render-batch --depth 2
+python3 eval_skill.py        # verification (boring PASS/FAIL)
+python3 test_caps.py         # dual-cap regression

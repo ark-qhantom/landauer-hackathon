@@ -1,0 +1,28 @@
+Landauer verification harness — independent re-check of the governance + physics claims
+
+(1-3) Dual independent hard caps, surviving --approve
+  [PASS] money cap BLOCKS scale-to-500-leads despite --approve  (budget_ok=False)
+  [PASS] energy cap BLOCKS gpu-render-batch despite --approve  (energy_ok=False, cap=50000 J)
+  [PASS] caps are orthogonal — energy block carries NO budget_limit hit (money would have allowed it)
+  [PASS] money block carries NO energy_limit hit
+
+(4-5) Tamper-evident ledger with physics energy inside the hash chain
+  [PASS] audit ledger builds with rows  (12 decisions)
+  [PASS] ledger rows carry every physics-energy column
+  [PASS] SHA-256 chain verifies as written
+  [PASS] altering one est_energy_joules breaks the chain (energy is inside the moat)  (tampered row 11)
+
+(6) Honest reality labeling
+  [PASS] REAL is reserved for nvidia-smi telemetry
+  [PASS] offline fallback is labeled MODELED, never REAL
+  [PASS] FallbackSimulator declares itself not-real (source='fallback')
+  [PASS] NvidiaSmiProvider would tag samples REAL ('nvidia-smi')
+
+(7) Physics regime inherits down the spawned chain
+  [PASS] child run inherits an energy_budget  (50000 J)
+  [PASS] child actions carry physics profiles
+
+(8) The physics task actually conserves its invariants
+  [PASS] Kepler orbit conserves energy + angular momentum  (energy band 2.1e-06, L-drift 1.7e-14)
+
+ALL PASS ✓  (15 passed)

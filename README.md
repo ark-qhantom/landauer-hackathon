@@ -1,35 +1,50 @@
-# Landauer
+# Landauer — *agents that cannot outrun reality*
 
-**Physics-Grounded Agent Treasury Framework** for the Hermes Agent Accelerated Business Hackathon (Nous Research × NVIDIA × Stripe).
+**Physics-grounded agent treasury framework** for the Hermes Agent Accelerated Business Hackathon
+(Nous Research × NVIDIA × Stripe). A governed runtime where **every action has a reality label, a
+hash-chained receipt, and an energy budget it cannot lie about.**
 
-## Quick Start
+If agents are going to act in the world, what keeps them honest? Four constraints:
+
+1. **Reality labels** — every action / number is `REAL`, `MODELED`, `THEORETICAL`, or `DRY-RUN` (and decisions are `AUTO-ALLOWED / PENDING / HUMAN-APPROVED / BLOCKED`).
+2. **Capability gates** — the agent cannot spend / mutate / call real systems until a human approves (soft: approval clears them).
+3. **Energy-aware execution** — work runs against an energy budget in **Joules**, MODELED for planning, **REAL** measured on NVIDIA hardware (`nvidia-smi`, ∫P·dt).
+4. **Hash-chained Reality Ledger** — every step is SHA-256 tamper-evident, **energy columns inside the chain**.
+
+Money (USD) and energy (Joules) are **two independent hard caps**: both checked *before* approval, and a human `--approve` can lift **neither**.
+
+## Quick start
 ```bash
-cd /Users/qhantom/landauer-hackathon
-python3 runner.py --approve quality-review-leads allocate-revenue scale-to-500-leads --depth 2
-# View current-dashboard.html (extend for energy graphs)
+python3 runner.py --no-real-stripe --approve scale-to-500-leads gpu-render-batch --depth 2
+open current-dashboard.html        # the full dashboard (governance, energy telemetry, ledger, reality matrix)
+```
+You'll see two refused actions, both pre-approved and still BLOCKED:
+- `scale-to-500-leads` — over the **$300** money cap.
+- `gpu-render-batch` — cheap in money (~$5) but over the **50,000 J** energy cap → *money would have allowed it; the physics cap refused it.*
+
+## Verify the claims (boring, judge-friendly)
+```bash
+python3 eval_skill.py     # dual caps survive --approve, energy is inside the hash chain (tamper-checked),
+                          # honest labeling, child inherits the energy budget, physics conservation — all PASS
+python3 test_caps.py      # dual-cap regression
 ```
 
-## Core Idea
-General framework for Hermes agents where budgets are dual (money + real energy from NVIDIA hardware physics). Unbreakable caps survive human approval. Tamper-evident ledger with entropy notes. Real Stripe earn/spend under physics constraints. Same code scales from solo laptop to enterprise DGX.
+## REAL vs MODELED (honesty)
+This MacBook has no `nvidia-smi`, so its energy is the **deterministic fallback simulator**, labeled
+**MODELED** everywhere — never presented as REAL. The **REAL measured Joules** (and the `REAL · nvidia-smi`
+pills + the hero telemetry curve) come from running on an **RTX 4070** — see [`4070-CAPTURE.md`](4070-CAPTURE.md).
+The Landauer kT·ln2 floor is annotated **THEORETICAL** only; it never drives a cap.
 
-See CLAUDE_CONTEXT.md for full spec (for AI collaborators) and ARCHITECTURE_GOALS.md for design targets.
+## What's where
+- `protos_core.py` — pure governance kernel: dual-cap `evaluate_guardrails`, `EnergyBudget`, `PhysicsEnergyModel`, hash-chained ledger inputs.
+- `telemetry.py` — `NvidiaSmiProvider` (REAL) + deterministic `FallbackSimulator` (MODELED) + `EnergyMeter` (∫P·dt).
+- `physics_task.py` — pure-stdlib velocity-Verlet solver with conservation checks (the real work that's metered).
+- `runner.py` — orchestration, the hash-chained audit ledger, the dashboard, the installable bundle.
+- `eval_skill.py` / `test_caps.py` — verification.
+- `bundle/` — the installable Hermes skill + `physics-model.yaml` (energy contract) + `TELEMETRY.md` + `install.sh`.
+- `video/` — `make_frames.py` + `build_video.py` (8-beat demo pipeline) + `video-script.md`.
+- `submission-artifacts/` — tracked sample run (the live `out/` is gitignored); `real-run-4070/` lands after the capture.
+- `CLAUDE_CONTEXT.md` / `ARCHITECTURE_GOALS.md` — full product spec + design targets.
 
-Original reference logic pulled from /Users/qhantom/protos/hackathon/ per PULL_POLICY.md in reference/.
-
-## Submission Focus
-- 1-3 min video with live telemetry, blocked physics action, real Stripe, full Reality Ledger.
-- Working demo with measurable energy accounting.
-- Clean, ambitious, general-use (not vertical-specific).
-
-Built by evolving Protos strengths into physics-first design under tight 5-day timeline.
-
-## Project Structure
-- Core: protos_core.py (evolve governance), runner.py (telemetry + demo)
-- Reference: reference/ (ORIGIN.md, PULL_POLICY.md)
-- Artifacts: Extend original bundle/skills/dashboard for physics.
-- Context for collaborators: CLAUDE_CONTEXT.md + ARCHITECTURE_GOALS.md
-
-Run with real NVIDIA hardware for telemetry (nvidia-smi). Fallback simulator available.
-
-## Next
-See CLAUDE_CONTEXT.md for detailed instructions. This is a clean project for the "Landauer" evolution.
+Built by evolving the Protos governance kernel into a physics-first design. Every figure is tagged
+real, modeled, theoretical, or dry-run — nothing is presented as more real than it is.

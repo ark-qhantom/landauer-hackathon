@@ -1,0 +1,20 @@
+{
+  "status": "dry_run",
+  "reason": "real mode off (pass --real-stripe to enable)",
+  "mode": "test",
+  "currency": "usd",
+  "offer_name": "LeadForge Micro-Agency",
+  "price_usd": 49.0,
+  "ids": {
+    "product": "prod_DRYRUN",
+    "price": "price_DRYRUN",
+    "payment_link": "plink_DRYRUN",
+    "payment_intent": "pi_DRYRUN",
+    "charge": "ch_DRYRUN",
+    "balance_txn": "txn_DRYRUN"
+  },
+  "payment_link_url": "https://buy.stripe.com/test_DRYRUN",
+  "amount_captured_cents": 4900,
+  "net_cents": 4728,
+  "note": "DRY-RUN \u2014 provide a Stripe sk_test_ key + `pip install stripe` to produce real, verifiable ids."
+}

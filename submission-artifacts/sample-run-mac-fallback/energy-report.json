@@ -1,0 +1,270 @@
+{
+  "energy_source": "fallback",
+  "is_real": false,
+  "energy_limit_joules": 50000,
+  "committed_energy_joules_modeled": 5215.0,
+  "energy_ok": false,
+  "physics_task": {
+    "system": "two_body_orbit",
+    "steps": 1500000,
+    "dt": 0.001,
+    "conserved": true,
+    "energy_band_rel": 2.1338323725619673e-06,
+    "energy_drift_rel": 1.766472019313609e-07,
+    "invariants": {
+      "E0": -0.6799999999999999,
+      "E_final": -0.6800001201200973,
+      "L0": 0.8,
+      "L_drift_rel": 1.2989609388114332e-13
+    },
+    "useful_work_units": 1500000,
+    "energy_efficiency_steps_per_j": 7231.15,
+    "energy_source": "fallback",
+    "summary": "Kepler 2-body, 1,500,000 Verlet steps: energy band 2.13e-06, angular-momentum drift 1.30e-13 \u2014 OK."
+  },
+  "cycles": [
+    {
+      "run_id": "revenue-ops-seed-001",
+      "generation": 1,
+      "measured_energy_joules": 207.436,
+      "power_w_avg": 109.74,
+      "temp_c_peak": 59.31,
+      "source": "fallback",
+      "is_real": false,
+      "samples": [
+        {
+          "ts_ms": 0,
+          "power_W": 59.88,
+          "temp_C": 37.97,
+          "util_pct": 0.7,
+          "source": "fallback"
+        },
+        {
+          "ts_ms": 200,
+          "power_W": 97.14,
+          "temp_C": 40.94,
+          "util_pct": 27.7,
+          "source": "fallback"
+        },
+        {
+          "ts_ms": 400,
+          "power_W": 128.0,
+          "temp_C": 44.1,
+          "util_pct": 48.9,
+          "source": "fallback"
+        },
+        {
+          "ts_ms": 600,
+          "power_W": 130.14,
+          "temp_C": 47.5,
+          "util_pct": 51.5,
+          "source": "fallback"
+        },
+        {
+          "ts_ms": 800,
+          "power_W": 128.74,
+          "temp_C": 50.12,
+          "util_pct": 50.0,
+          "source": "fallback"
+        },
+        {
+          "ts_ms": 1000,
+          "power_W": 131.86,
+          "temp_C": 53.13,
+          "util_pct": 51.4,
+          "source": "fallback"
+        },
+        {
+          "ts_ms": 1200,
+          "power_W": 130.94,
+          "temp_C": 56.26,
+          "util_pct": 49.4,
+          "source": "fallback"
+        },
+        {
+          "ts_ms": 1400,
+          "power_W": 129.78,
+          "temp_C": 59.13,
+          "util_pct": 51.2,
+          "source": "fallback"
+        },
+        {
+          "ts_ms": 1600,
+          "power_W": 100.35,
+          "temp_C": 58.55,
+          "util_pct": 26.6,
+          "source": "fallback"
+        },
+        {
+          "ts_ms": 1800,
+          "power_W": 60.58,
+          "temp_C": 59.31,
+          "util_pct": 0.0,
+          "source": "fallback"
+        }
+      ]
+    },
+    {
+      "run_id": "revenue-ops-seed-001-gen1",
+      "generation": 2,
+      "measured_energy_joules": 207.766,
+      "power_w_avg": 109.83,
+      "temp_c_peak": 59.38,
+      "source": "fallback",
+      "is_real": false,
+      "samples": [
+        {
+          "ts_ms": 0,
+          "power_W": 60.21,
+          "temp_C": 37.63,
+          "util_pct": 0.6,
+          "source": "fallback"
+        },
+        {
+          "ts_ms": 200,
+          "power_W": 100.86,
+          "temp_C": 40.92,
+          "util_pct": 27.1,
+          "source": "fallback"
+        },
+        {
+          "ts_ms": 400,
+          "power_W": 130.91,
+          "temp_C": 43.8,
+          "util_pct": 50.3,
+          "source": "fallback"
+        },
+        {
+          "ts_ms": 600,
+          "power_W": 129.05,
+          "temp_C": 47.44,
+          "util_pct": 50.0,
+          "source": "fallback"
+        },
+        {
+          "ts_ms": 800,
+          "power_W": 129.23,
+          "temp_C": 50.58,
+          "util_pct": 50.6,
+          "source": "fallback"
+        },
+        {
+          "ts_ms": 1000,
+          "power_W": 129.44,
+          "temp_C": 52.82,
+          "util_pct": 50.8,
+          "source": "fallback"
+        },
+        {
+          "ts_ms": 1200,
+          "power_W": 130.98,
+          "temp_C": 56.59,
+          "util_pct": 48.9,
+          "source": "fallback"
+        },
+        {
+          "ts_ms": 1400,
+          "power_W": 129.71,
+          "temp_C": 58.8,
+          "util_pct": 49.0,
+          "source": "fallback"
+        },
+        {
+          "ts_ms": 1600,
+          "power_W": 99.2,
+          "temp_C": 59.38,
+          "util_pct": 27.5,
+          "source": "fallback"
+        },
+        {
+          "ts_ms": 1800,
+          "power_W": 58.69,
+          "temp_C": 58.95,
+          "util_pct": 0.0,
+          "source": "fallback"
+        }
+      ]
+    },
+    {
+      "run_id": "revenue-ops-seed-001-gen2",
+      "generation": 3,
+      "measured_energy_joules": 208.075,
+      "power_w_avg": 110.09,
+      "temp_c_peak": 59.16,
+      "source": "fallback",
+      "is_real": false,
+      "samples": [
+        {
+          "ts_ms": 0,
+          "power_W": 61.17,
+          "temp_C": 37.62,
+          "util_pct": 0.0,
+          "source": "fallback"
+        },
+        {
+          "ts_ms": 200,
+          "power_W": 98.01,
+          "temp_C": 41.21,
+          "util_pct": 26.7,
+          "source": "fallback"
+        },
+        {
+          "ts_ms": 400,
+          "power_W": 131.91,
+          "temp_C": 44.54,
+          "util_pct": 49.6,
+          "source": "fallback"
+        },
+        {
+          "ts_ms": 600,
+          "power_W": 131.39,
+          "temp_C": 47.55,
+          "util_pct": 49.6,
+          "source": "fallback"
+        },
+        {
+          "ts_ms": 800,
+          "power_W": 130.34,
+          "temp_C": 50.29,
+          "util_pct": 50.2,
+          "source": "fallback"
+        },
+        {
+          "ts_ms": 1000,
+          "power_W": 129.28,
+          "temp_C": 53.56,
+          "util_pct": 48.5,
+          "source": "fallback"
+        },
+        {
+          "ts_ms": 1200,
+          "power_W": 128.7,
+          "temp_C": 55.74,
+          "util_pct": 50.6,
+          "source": "fallback"
+        },
+        {
+          "ts_ms": 1400,
+          "power_W": 129.9,
+          "temp_C": 59.1,
+          "util_pct": 49.1,
+          "source": "fallback"
+        },
+        {
+          "ts_ms": 1600,
+          "power_W": 100.34,
+          "temp_C": 59.16,
+          "util_pct": 27.6,
+          "source": "fallback"
+        },
+        {
+          "ts_ms": 1800,
+          "power_W": 59.84,
+          "temp_C": 58.9,
+          "util_pct": 0.8,
+          "source": "fallback"
+        }
+      ]
+    }
+  ]
+}
