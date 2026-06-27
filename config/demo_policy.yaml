@@ -1,0 +1,58 @@
+# Landauer runtime constitution — Nous × NVIDIA hackathon demo.
+#
+# This is the human-readable policy a Hermes agent runs under. Landauer loads it and gates every
+# proposed action against these rules BEFORE the action executes, then writes an auditable receipt.
+#
+#   Humans set the rules (this file). Agents do the work. Landauer leaves the receipt.
+
+agent_id: hermes-demo-agent
+policy_version: landauer-demo-v1
+
+# Treasury the agent draws on (Stripe-backed, test mode). budget_usd is the running balance for the
+# session; max_usd_per_task below is the per-action ceiling.
+treasury:
+  currency: usd
+  budget_usd: 1.00
+
+# Hard resource caps, enforced per task.
+limits:
+  max_usd_per_task: 1.00       # dollars   — economic limit  (Stripe-backed)
+  max_joules_per_task: 5000    # joules    — physical limit  (NVIDIA-backed, ∫P·dt)
+  max_runtime_seconds: 120     # seconds   — wall-clock limit
+
+# Approval policy. A human may approve an action, but approval does NOT lift a hard cap unless the
+# constitution explicitly grants override for that resource. This is "the cap is enforced below the human."
+approvals:
+  human_required: true
+  human_can_override_usd: false
+  human_can_override_joules: false
+
+# Credential scopes the agent is permitted to use. An action that needs a scope outside this set is denied.
+credentials:
+  allowed_scopes:
+    - read_public
+    - model_api
+    - stripe_test
+
+# What the agent is allowed to attempt. `requires_human_review: true` routes the action to a human
+# (ESCALATE) rather than auto-allowing it.
+actions:
+  summarize_docs:
+    allowed: true
+    requires_human_review: false
+  call_api_model:
+    allowed: true
+    requires_human_review: false
+  run_local_model:
+    allowed: true
+    requires_human_review: false
+  large_gpu_job:
+    allowed: true
+    requires_human_review: false
+  public_post:
+    allowed: true
+    requires_human_review: true       # public/outward action — always routed to a human
+  export_customer_data:
+    allowed: true
+    requires_human_review: false
+    required_credential_scope: prod_db_write   # NOT in credentials.allowed_scopes above -> the gate denies it
