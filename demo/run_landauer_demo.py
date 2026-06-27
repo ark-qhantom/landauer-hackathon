@@ -16,6 +16,7 @@ Usage (from repo root):
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 from pathlib import Path
@@ -31,6 +32,7 @@ sys.path.insert(0, str(ROOT))
 from landauer import ALLOWED, BLOCKED, ESCALATE, ActionRequest, Ledger, Reason, evaluate, load_policy
 from landauer.adapters import gpu_workload, hermes as hermes_adapter, nvidia
 from landauer.adapters.stripe_budget import StripeBudgetAdapter
+from hermes_bridge import hermes_available
 
 HERMES_WIN = os.environ.get(
     "HERMES_PATH", r"C:\Users\BB2SM\AppData\Local\hermes\hermes-agent\venv\Scripts\hermes.exe")
@@ -65,9 +67,31 @@ def panel(title: str, rows: list[tuple[str, str, str | None]], width: int = 60) 
     print("└" + bar + "┘")
 
 
+def _short(p) -> str:
+    p = Path(p)
+    try:
+        return str(p.relative_to(ROOT)).replace("\\", "/")
+    except ValueError:
+        return p.name
+
+
+def preflight_panel(policy_path: str, hermes_disp, gpu_disp, treasury_mode: str) -> None:
+    """Live-checked sponsor/system roles — the first thing a judge sees: who proposes the work, who
+    enforces the constitution, who proves the spend, who proves the compute, and where receipts go."""
+    tre = ("Stripe TEST", "green") if treasury_mode == "test" else ("simulated (no test key)", "yellow")
+    panel("LANDAUER LIVE DEMO — PREFLIGHT (1/2)", [
+        ("Agent runtime:", hermes_disp[0], hermes_disp[1]),
+        ("Proposal format:", "structured JSON", None),
+        ("Policy source:", _short(policy_path), "cyan"),
+        ("Treasury:", tre[0], tre[1]),
+        ("GPU telemetry:", gpu_disp[0], gpu_disp[1]),
+        ("Ledger:", "JSONL receipts (per decision)", None),
+    ])
+
+
 def constitution_panel(policy, treasury_mode: str = "test") -> None:
     tre = "Stripe test" if treasury_mode == "test" else "simulated, no test key"
-    panel("LANDAUER RUNTIME CONSTITUTION  ·  " + policy.policy_version, [
+    panel("LANDAUER RUNTIME CONSTITUTION (2/2)  ·  " + policy.policy_version, [
         ("Agent:", policy.agent_id, "cyan"),
         ("Treasury:", f"${policy.treasury.budget_usd:.2f} {policy.treasury.currency} ({tre})", None),
         ("Max USD/task:", f"${policy.limits.max_usd_per_task:.2f}", None),
@@ -123,11 +147,37 @@ def main() -> int:
     treasury = StripeBudgetAdapter(policy.treasury.budget_usd, allow_real=args.real_stripe)
 
     print(_c("\nLANDAUER — a runtime constitution for autonomous agents\n", "bold"))
-    print("Hermes proposes · NVIDIA prices the compute · Stripe accounts the spend · Landauer decides.\n")
+    print("Hermes proposes the work · Landauer enforces the constitution · Stripe proves the spend · "
+          "NVIDIA proves the compute · every decision leaves a receipt.\n")
+
+    # ---- Preflight (1/2): live-checked sponsor/system roles ----
+    if args.real_hermes:
+        av = hermes_available(args.hermes_path)
+        if av.get("available"):
+            toks = (av.get("version") or "").split()
+            ver = next((t for t in toks if t.startswith("v") and t[1:2].isdigit()), "")
+            hermes_disp = (f"Hermes LIVE — hermes.exe {ver}".strip(), "green")
+        else:
+            hermes_disp = ("Hermes fallback — unreachable", "yellow")
+    else:
+        hermes_disp = ("Hermes fallback — --no-real-hermes", "yellow")
+
+    real_gpu_load = nvidia.available() and gpu_workload.gpu_available() and not args.mock_nvidia
+    if nvidia.available() and real_gpu_load:
+        gpu_disp = ("NVIDIA nvidia-smi REAL · GPU load", "green")
+    elif nvidia.available():
+        gpu_disp = ("NVIDIA nvidia-smi REAL · CPU workload", "green")
+    else:
+        gpu_disp = ("MODELED fallback · no GPU", "yellow")
+
+    preflight_panel(args.policy, hermes_disp, gpu_disp, treasury.mode)
+    print(_c(f"   GPU: {nvidia.device_name()}", "dim"))
+    print()
+
+    # ---- Constitution (2/2): the human-defined rules the agent runs under ----
     constitution_panel(policy, treasury.mode)
-    print(_c(f"   source: {args.policy}", "dim"))
-    print(f"\nTreasury: {treasury.status()}   |   GPU: {nvidia.device_name()} "
-          f"(real telemetry: {nvidia.available()})\n")
+    print(_c(f"   source: {_short(args.policy)}", "dim"))
+    print()
 
     def gate_and_log(req: ActionRequest, title: str, *, on_allowed=None):
         """Evaluate -> (if allowed) execute side effect -> write receipt -> print panel."""
@@ -154,9 +204,15 @@ def main() -> int:
         hermes_path=args.hermes_path, real=args.real_hermes)
     raw_usd = float(proposal.get("usd_estimate", 0.84) or 0.84)
     usd_a = max(min(raw_usd, 0.99), 0.50)  # clamp to a real Stripe-chargeable amount, under the $1.00 cap
-    print(f"   Hermes proposal [{proposal.get('source')}]: action={proposal.get('action')} "
-          f"usd≈${raw_usd:.2f} — {str(proposal.get('rationale',''))[:60]}")
-    print(f"   → Landauer gates this as call_api_model @ ${usd_a:.2f} "
+    _src = proposal.get("source")
+    src_disp = _c("Hermes LIVE", "green") if _src == "hermes" else _c("Hermes fallback", "yellow")
+    _json_view = json.dumps({k: proposal.get(k) for k in
+                             ("action", "usd_estimate", "joules_estimate", "runtime_seconds") if k in proposal})
+    print(f"   {src_disp} (hermes.exe) proposed a structured action:")
+    print(_c(f"     {_json_view}", "cyan"))
+    if proposal.get("rationale"):
+        print(f"     rationale: {str(proposal['rationale'])[:62]}")
+    print(f"   → Landauer gates it as call_api_model @ ${usd_a:.2f} "
           f"(clamped to a Stripe-chargeable amount under the ${policy.limits.max_usd_per_task:.2f} cap)\n")
 
     def _charge(decision):
