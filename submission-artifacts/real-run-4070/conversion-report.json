@@ -1,0 +1,14 @@
+{
+  "run_id": "revenue-ops-seed-001",
+  "prospects": 50,
+  "qualified": 21,
+  "booked": 7,
+  "qualify_rate": 0.418,
+  "book_rate": 0.318,
+  "gross_revenue_usd": 1029.0,
+  "ops_cost_usd": 50.0,
+  "net_revenue_usd": 979.0,
+  "roi": 19.6,
+  "cost_per_qualified_usd": 2.38,
+  "provenance": "ops_cost=REAL (sum of action costs); funnel outcomes=PROJECTED (deterministic model, no live sends)"
+}

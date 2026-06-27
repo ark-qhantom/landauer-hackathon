@@ -57,7 +57,7 @@ SATURATION_EPS = 0.005  # stop spawning when the projected per-generation skill 
 # Real physical work the root agent performs each demo run, metered for REAL Joules. Conservative system
 # (symplectic Verlet) so correctness is verifiable; bump PHYS_STEPS for a longer real-telemetry window on the 4070.
 PHYS_SYSTEM = "two_body_orbit"
-PHYS_STEPS = 1_500_000
+PHYS_STEPS = 22_000_000   # ~13.7 s metered window on the 4070 box (~1.6 Msteps/s); nvidia-smi ~190ms/call -> ~40-50 samples
 PHYS_DT = 1e-3
 
 
@@ -77,7 +77,7 @@ def run_chain(root_run, approved_ids, depth, eval_result=None):
         # stays reproducible); measured energy is reported separately and shown on the dashboard.
         provider = get_provider(prefer_real=True, run_id=run.run_id, action_id=f"cycle-gen{gen}",
                                 intensity=0.5, duration_s=2.0, quiet=(gen > 1))
-        with EnergyMeter(provider, hz=5) as meter:
+        with EnergyMeter(provider, hz=10) as meter:
             # The root agent does REAL physical work (a conservative dynamical-system solve) inside the
             # metered window, so the measured Joules reflect actual compute, not an idle blip. Children skip
             # the heavy solve to keep the chain fast (the energy story is told by the root cycle).

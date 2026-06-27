@@ -1,0 +1,403 @@
+{
+  "energy_source": "nvidia-smi",
+  "is_real": true,
+  "energy_limit_joules": 50000,
+  "committed_energy_joules_modeled": 3968.62,
+  "energy_ok": false,
+  "physics_task": {
+    "system": "two_body_orbit",
+    "steps": 22000000,
+    "dt": 0.001,
+    "conserved": true,
+    "energy_band_rel": 2.133832858774345e-06,
+    "energy_drift_rel": 2.37622503373349e-08,
+    "invariants": {
+      "E0": -0.6799999999999999,
+      "E_final": -0.6800000161583302,
+      "L0": 0.8,
+      "L_drift_rel": 4.515832152662824e-13
+    },
+    "useful_work_units": 22000000,
+    "energy_efficiency_steps_per_j": 236157.16,
+    "energy_source": "nvidia-smi",
+    "summary": "Kepler 2-body, 22,000,000 Verlet steps: energy band 2.13e-06, angular-momentum drift 4.52e-13 \u2014 OK."
+  },
+  "cycles": [
+    {
+      "run_id": "revenue-ops-seed-001",
+      "generation": 1,
+      "measured_energy_joules": 93.1583,
+      "power_w_avg": 6.42,
+      "temp_c_peak": 29.0,
+      "source": "nvidia-smi",
+      "is_real": true,
+      "samples": [
+        {
+          "ts_ms": 213,
+          "power_W": 6.27,
+          "temp_C": 29.0,
+          "util_pct": 18.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 480,
+          "power_W": 6.32,
+          "temp_C": 29.0,
+          "util_pct": 11.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 844,
+          "power_W": 6.32,
+          "temp_C": 29.0,
+          "util_pct": 11.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 1164,
+          "power_W": 6.39,
+          "temp_C": 29.0,
+          "util_pct": 14.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 1481,
+          "power_W": 6.36,
+          "temp_C": 29.0,
+          "util_pct": 8.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 1748,
+          "power_W": 6.36,
+          "temp_C": 29.0,
+          "util_pct": 8.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 2080,
+          "power_W": 6.36,
+          "temp_C": 29.0,
+          "util_pct": 18.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 2515,
+          "power_W": 6.27,
+          "temp_C": 29.0,
+          "util_pct": 9.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 2848,
+          "power_W": 6.27,
+          "temp_C": 29.0,
+          "util_pct": 9.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 3118,
+          "power_W": 6.41,
+          "temp_C": 29.0,
+          "util_pct": 12.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 3412,
+          "power_W": 6.58,
+          "temp_C": 29.0,
+          "util_pct": 16.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 3783,
+          "power_W": 6.58,
+          "temp_C": 29.0,
+          "util_pct": 16.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 4046,
+          "power_W": 6.55,
+          "temp_C": 29.0,
+          "util_pct": 14.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 4349,
+          "power_W": 6.55,
+          "temp_C": 29.0,
+          "util_pct": 14.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 4632,
+          "power_W": 6.53,
+          "temp_C": 29.0,
+          "util_pct": 20.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 4915,
+          "power_W": 6.77,
+          "temp_C": 29.0,
+          "util_pct": 24.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 5315,
+          "power_W": 6.77,
+          "temp_C": 29.0,
+          "util_pct": 24.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 5617,
+          "power_W": 6.83,
+          "temp_C": 29.0,
+          "util_pct": 15.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 6017,
+          "power_W": 6.75,
+          "temp_C": 29.0,
+          "util_pct": 17.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 6383,
+          "power_W": 6.75,
+          "temp_C": 29.0,
+          "util_pct": 17.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 6651,
+          "power_W": 6.41,
+          "temp_C": 29.0,
+          "util_pct": 15.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 6886,
+          "power_W": 6.48,
+          "temp_C": 29.0,
+          "util_pct": 19.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 7203,
+          "power_W": 6.48,
+          "temp_C": 29.0,
+          "util_pct": 19.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 7448,
+          "power_W": 6.59,
+          "temp_C": 29.0,
+          "util_pct": 9.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 7735,
+          "power_W": 6.59,
+          "temp_C": 29.0,
+          "util_pct": 9.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 8021,
+          "power_W": 6.54,
+          "temp_C": 29.0,
+          "util_pct": 18.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 8264,
+          "power_W": 6.54,
+          "temp_C": 29.0,
+          "util_pct": 18.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 8553,
+          "power_W": 6.16,
+          "temp_C": 29.0,
+          "util_pct": 0.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 8821,
+          "power_W": 6.16,
+          "temp_C": 29.0,
+          "util_pct": 0.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 9135,
+          "power_W": 6.31,
+          "temp_C": 29.0,
+          "util_pct": 14.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 9454,
+          "power_W": 6.17,
+          "temp_C": 29.0,
+          "util_pct": 7.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 9804,
+          "power_W": 6.17,
+          "temp_C": 29.0,
+          "util_pct": 7.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 10153,
+          "power_W": 6.28,
+          "temp_C": 29.0,
+          "util_pct": 19.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 10469,
+          "power_W": 6.36,
+          "temp_C": 29.0,
+          "util_pct": 9.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 10855,
+          "power_W": 6.36,
+          "temp_C": 29.0,
+          "util_pct": 9.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 11205,
+          "power_W": 6.36,
+          "temp_C": 29.0,
+          "util_pct": 15.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 11506,
+          "power_W": 6.3,
+          "temp_C": 29.0,
+          "util_pct": 9.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 11870,
+          "power_W": 6.3,
+          "temp_C": 29.0,
+          "util_pct": 9.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 12273,
+          "power_W": 6.35,
+          "temp_C": 29.0,
+          "util_pct": 16.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 12623,
+          "power_W": 6.28,
+          "temp_C": 29.0,
+          "util_pct": 8.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 12956,
+          "power_W": 6.3,
+          "temp_C": 29.0,
+          "util_pct": 15.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 13324,
+          "power_W": 6.3,
+          "temp_C": 29.0,
+          "util_pct": 15.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 13607,
+          "power_W": 6.38,
+          "temp_C": 29.0,
+          "util_pct": 9.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 13939,
+          "power_W": 6.51,
+          "temp_C": 29.0,
+          "util_pct": 13.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 14256,
+          "power_W": 6.51,
+          "temp_C": 29.0,
+          "util_pct": 13.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 14572,
+          "power_W": 6.26,
+          "temp_C": 29.0,
+          "util_pct": 8.0,
+          "source": "nvidia-smi"
+        },
+        {
+          "ts_ms": 14716,
+          "power_W": 6.26,
+          "temp_C": 29.0,
+          "util_pct": 8.0,
+          "source": "nvidia-smi"
+        }
+      ]
+    },
+    {
+      "run_id": "revenue-ops-seed-001-gen1",
+      "generation": 2,
+      "measured_energy_joules": 0.0,
+      "power_w_avg": 6.26,
+      "temp_c_peak": 29.0,
+      "source": "nvidia-smi",
+      "is_real": true,
+      "samples": [
+        {
+          "ts_ms": 39,
+          "power_W": 6.26,
+          "temp_C": 29.0,
+          "util_pct": 8.0,
+          "source": "nvidia-smi"
+        }
+      ]
+    },
+    {
+      "run_id": "revenue-ops-seed-001-gen2",
+      "generation": 3,
+      "measured_energy_joules": 0.0,
+      "power_w_avg": 6.25,
+      "temp_c_peak": 29.0,
+      "source": "nvidia-smi",
+      "is_real": true,
+      "samples": [
+        {
+          "ts_ms": 41,
+          "power_W": 6.25,
+          "temp_C": 29.0,
+          "util_pct": 14.0,
+          "source": "nvidia-smi"
+        }
+      ]
+    }
+  ]
+}

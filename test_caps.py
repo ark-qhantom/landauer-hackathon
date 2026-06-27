@@ -66,7 +66,7 @@ check("energy cap active: energy_limit_joules == 50000", rep.energy_limit_joules
 
 # (2) ENERGY-only block: cheap money ($1 vs $1000), expensive energy (12000 J vs 5000 J cap), pre-approved.
 print("\n(2) energy hard stop fires independently of money, survives --approve")
-proj = PhysicsEnergyModel.estimate_energy(1.0, 60)   # (60 + 1.0*(200-60)) * 60 = 200W * 60s = 12000 J
+proj = PhysicsEnergyModel.estimate_energy(1.0, 60)   # (4.5 + 1.0*(285-4.5)) * 60 = 285W * 60s = 17100 J
 run2 = _energy_run(intensity=1.0, duration_s=60, energy_limit_J=5000.0)
 rep2 = evaluate_guardrails(run2, evaluate_run(run2), approved_ids=["train-0"])  # pre-approved!
 item = next(i for i in rep2.items if i.action_id == "train-0")
@@ -80,14 +80,17 @@ check("energy_ok False AND budget_ok True (caps are orthogonal)",
 
 # (3) CUMULATIVE energy: two sub-limit actions whose sum exceeds the cap -> second blocks (like money).
 print("\n(3) energy cap is cumulative (a running hard stop, like money)")
-# each action: 0.5 intensity x 10s = (60 + 0.5*140)*10 = 1300 J ; cap 2000 -> first fits, second (2600) blocks.
+# each action: 0.5 intensity x 10s -> estimate_energy under the CALIBRATED 4070 envelope (idle 4.5 / max 285 W).
+# cap 2000 J -> first fits, cumulative 2x exceeds -> second blocks. Computed from the model so the assertion
+# tracks the calibrated envelope instead of a literal tied to the old 60/200 placeholders (was 1300 J).
+_per = PhysicsEnergyModel.estimate_energy(0.5, 10)
 run3 = _energy_run(intensity=0.5, duration_s=10, energy_limit_J=2000.0, n=2)
 rep3 = evaluate_guardrails(run3, evaluate_run(run3))
 b3 = {b.action_id for b in rep3.blocked}
-check("first action fits (1300 J, not blocked)", "train-0" not in b3)
-check("second action blocked (cumulative 2600 J > 2000 J)", "train-1" in b3)
-check("committed_energy reflects only the executable action (1300 J)",
-      abs(rep3.committed_energy_joules - 1300.0) < 1e-6)
+check(f"first action fits ({_per:.0f} J < 2000 J cap, not blocked)", "train-0" not in b3)
+check(f"second action blocked (cumulative {2*_per:.0f} J > 2000 J)", "train-1" in b3)
+check(f"committed_energy reflects only the executable action ({_per:.0f} J)",
+      abs(rep3.committed_energy_joules - _per) < 1e-6)
 
 # (4) Sub-limit energy action is NOT over-blocked.
 print("\n(4) sub-limit energy action passes (no false block)")

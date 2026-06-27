@@ -243,11 +243,11 @@ class ProtosRunResult:
 BOLTZMANN_K = 1.380649e-23          # J/K (CODATA)
 _LN2 = math.log(2)
 
-# Hardware power envelope for MODELED projections. These defaults are PLACEHOLDERS to be CALIBRATED from real
-# nvidia-smi on the RTX 4070 (idle draw + sustained max). They intentionally match telemetry.py's
-# FallbackSimulator envelope so projected (kernel) and fallback-measured (runner) Joules tell a consistent story.
-DEFAULT_IDLE_W = 60.0
-DEFAULT_MAX_W = 200.0
+# Hardware power envelope for MODELED projections. CALIBRATED from real nvidia-smi on the RTX 4070 Ti SUPER
+# (idle 4.47 W avg measured over 10 s; sustained max = 285 W TGP / power.limit). They intentionally match
+# telemetry.py's FallbackSimulator envelope so projected (kernel) and measured (runner) Joules tell a consistent story.
+DEFAULT_IDLE_W = 4.5
+DEFAULT_MAX_W = 285.0
 
 
 class PhysicsEnergyModel:
