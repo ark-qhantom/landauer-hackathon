@@ -43,7 +43,7 @@ class Ledger:
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
     def _next_receipt_id(self) -> str:
-        return f"landauer_{len(self.read_all()) + 1:03d}"
+        return f"landauer://receipt/{len(self.read_all()) + 1:03d}"
 
     def write(self, decision, *, runtime_seconds: Optional[float] = None,
               timestamp: Optional[str] = None) -> Dict[str, Any]:

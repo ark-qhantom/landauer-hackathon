@@ -48,16 +48,17 @@ def _extract_json(text: str):
 
 
 def propose_action(context: str, *, hermes_path: str = HERMES_DEFAULT, real: bool = True,
-                   timeout: int = 45) -> dict:
+                   timeout: int = 30, available: dict | None = None) -> dict:
     """Ask Hermes for the next action as JSON. Returns a dict with at least `action` and a `source`
-    field ('hermes' = real proposal, 'fallback' = deterministic stand-in)."""
-    fallback = {"action": "call_api_model", "usd_estimate": 0.84, "joules_estimate": 0.0,
-                "runtime_seconds": 3.0, "rationale": "deterministic fallback proposal",
+    field ('hermes' = real proposal, 'fallback' = deterministic stand-in). Pass `available` (a prior
+    hermes_available() result) to skip a redundant liveness probe."""
+    fallback = {"action": "call_api_model", "usd_estimate": 42.00, "joules_estimate": 0.0,
+                "runtime_seconds": 3.0, "rationale": "qualify inbound leads via one API model call",
                 "source": "fallback"}
     if not real:
         return dict(fallback)
 
-    avail = hermes_available(hermes_path)
+    avail = available if available is not None else hermes_available(hermes_path)
     if not avail.get("available"):
         return {**fallback, "note": f"hermes unavailable: {avail.get('version', '')[:80]}"}
 

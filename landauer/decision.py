@@ -49,8 +49,10 @@ ALL_REASONS: List[str] = [
 class ActionRequest:
     """A single action a Hermes agent proposes. Estimates are supplied by adapters (Stripe/NVIDIA) or
     by the agent's own projection; `joules_measured` flags whether the joule figure is a REAL nvidia-smi
-    measurement (∫P·dt) or a pre-execution projection."""
+    measurement (∫P·dt) or a pre-execution projection. `actor` is the specific agent making the request
+    (e.g. hermes.agent.researcher) — it flows onto the receipt for per-agent resource accounting."""
     action: str
+    actor: Optional[str] = None
     human_approved: bool = False
     usd_estimate: Optional[float] = None
     joules_estimate: Optional[float] = None
@@ -99,7 +101,7 @@ def evaluate(policy, req: ActionRequest) -> Decision:
 
     def mk(decision: str, reason: str) -> Decision:
         return Decision(
-            agent=policy.agent_id,
+            agent=req.actor or policy.agent_id,
             policy_version=policy.policy_version,
             action=req.action,
             human_approved=req.human_approved,

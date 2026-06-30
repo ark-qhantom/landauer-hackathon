@@ -43,31 +43,31 @@ def main() -> int:
         print(f"(empty ledger — run: python demo/run_landauer_demo.py)")
         return 0
 
-    print(_c("\nLANDAUER REALITY LEDGER", "bold") + _c(f"   {args.ledger}", "dim"))
-    header = f"{'#':<13}{'TIME':<9}{'ACTION':<22}{'HUMAN':<6}{'USD':<13}{'JOULES':<14}{'DECISION':<10}{'REASON':<30}"
+    print(_c("\nLANDAUER REALITY LEDGER\n", "bold"))
+    header = (f"{'#':<7}{'AGENT':<24}{'ACTION':<17}{'USD':<15}{'JOULES':<14}"
+              f"{'DECISION':<10}{'REASON':<28}")
     print(_c(header, "dim"))
     print(_c("─" * len(header), "dim"))
 
     for r in rows:
-        t = str(r.get("timestamp", ""))[11:19] or "—"
-        usd = "—" if r.get("usd_estimate") is None else f"${r['usd_estimate']:.2f}/${r['usd_cap']:.2f}"
+        rid = "#" + str(r.get("receipt_id", "")).rsplit("/", 1)[-1]
+        usd = "—" if r.get("usd_estimate") is None else f"${r['usd_estimate']:,.0f}/${r['usd_cap']:,.0f}"
         jou = "—" if r.get("joules_estimate") is None else f"{r['joules_estimate']:,.0f}/{r['joules_cap']:,.0f}"
-        human = "yes" if r.get("human_approved") else "no"
         dec = r.get("decision", "")
-        line = (f"{r.get('receipt_id',''):<13}{t:<9}{r.get('action',''):<22}{human:<6}"
-                f"{usd:<13}{jou:<14}")
-        print(line + _c(f"{dec.upper():<10}", _decision_color(dec)) + f"{r.get('reason',''):<30}")
+        line = f"{rid:<7}{str(r.get('agent_id','')):<24}{str(r.get('action','')):<17}{usd:<15}{jou:<14}"
+        print(line + _c(f"{dec.upper():<10}", _decision_color(dec)) + f"{r.get('reason',''):<28}")
         # surface real receipts under the row
         extras = []
-        if r.get("stripe_object_id") and not str(r["stripe_object_id"]).startswith("pi_SIMULATED"):
-            extras.append(_c(f"stripe:{r['stripe_object_id']}", "cyan"))
+        sid = str(r.get("stripe_object_id") or "")
+        if sid and not sid.startswith("pi_SIMULATED"):
+            extras.append(_c(f"stripe:{sid} (test)", "cyan"))
         tele = r.get("nvidia_telemetry") or {}
         if tele:
             src = "REAL nvidia-smi" if tele.get("source") == "nvidia-smi" else "MODELED"
             extras.append(_c(f"measured {float(tele.get('joules', 0)):,.0f} J @ "
                              f"{float(tele.get('avg_w', 0)):.1f} W [{src}]", "green"))
         if extras:
-            print(" " * 13 + "└ " + "   ".join(extras))
+            print(" " * 7 + "└ " + "   ".join(extras))
 
     n = len(rows)
     allowed = sum(1 for r in rows if r["decision"] == "allowed")

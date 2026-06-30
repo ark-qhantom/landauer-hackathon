@@ -1,16 +1,21 @@
 #!/usr/bin/env python3
-"""demo/run_landauer_demo.py — the Landauer hackathon demo (Hermes + NVIDIA + Stripe + Landauer).
+"""demo/run_landauer_demo.py — Landauer judge-facing terminal demo (Hermes + NVIDIA + Stripe + Landauer).
 
-Each scenario: a Hermes agent proposes an action, Landauer gates it against the runtime constitution
-BEFORE any side effect, allowed actions actually execute (real Stripe test charge / real GPU joules),
-and every decision is written as a receipt to the Reality Ledger.
+A polished, deterministic, recordable run that makes the product instantly legible:
 
-    Hermes decides what to do, NVIDIA tells us what compute it costs, Stripe accounts for what it
-    spends, and Landauer decides whether the action is allowed.
+    Hermes proposes the work · Landauer enforces the constitution · Stripe proves the spend ·
+    NVIDIA proves the compute · every decision leaves a receipt.
+
+Flow: intro → constitution card → five decision cards (allowed Stripe, blocked overspend, allowed real
+GPU compute, human-approved-but-joule-blocked, public action escalated) → receipt replay → per-agent
+resource accounting → Reality Ledger scoreboard.
+
+Real adapters are reused: real Stripe test-mode PaymentIntents, real nvidia-smi ∫P·dt telemetry, a tight
+no-skill Hermes proposer. Everything falls back to an honestly-labeled mode if a system is unavailable.
 
 Usage (from repo root):
     python demo/run_landauer_demo.py
-    python demo/run_landauer_demo.py --no-real-stripe --no-real-hermes --mock-nvidia --gpu-seconds 6
+    python demo/run_landauer_demo.py --no-real-stripe --no-real-hermes --mock-nvidia --no-anim
 """
 
 from __future__ import annotations
@@ -19,6 +24,7 @@ import argparse
 import json
 import os
 import sys
+import time
 from pathlib import Path
 
 try:
@@ -29,16 +35,20 @@ except Exception:
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from landauer import ALLOWED, BLOCKED, ESCALATE, ActionRequest, Ledger, Reason, evaluate, load_policy
+from landauer import ALLOWED, BLOCKED, ESCALATE, ActionRequest, Ledger, evaluate, load_policy
 from landauer.adapters import gpu_workload, hermes as hermes_adapter, nvidia
 from landauer.adapters.stripe_budget import StripeBudgetAdapter
 from hermes_bridge import hermes_available
 
 HERMES_WIN = os.environ.get(
     "HERMES_PATH", r"C:\Users\BB2SM\AppData\Local\hermes\hermes-agent\venv\Scripts\hermes.exe")
-POWER_EST_W = 285.0  # TGP — conservative MODELED power for the pre-execution joule projection (never under real draw)
+POWER_EST_W = 285.0   # TGP — conservative MODELED power for the pre-execution joule projection
 
-# ---------------------------------------------------------------- pretty panels
+OPERATOR = "hermes.agent.operator"
+RESEARCHER = "hermes.agent.researcher"
+PUBLISHER = "hermes.agent.publisher"
+VERB = {ALLOWED: "ALLOW", BLOCKED: "BLOCK", ESCALATE: "ESCALATE"}
+
 _ANSI = {"green": "92", "red": "91", "yellow": "93", "cyan": "96", "gold": "33", "dim": "2", "bold": "1"}
 
 
@@ -49,82 +59,155 @@ def _c(text: str, color: str | None) -> str:
 
 
 def _decision_color(decision: str) -> str:
-    return {"allowed": "green", "blocked": "red", "escalate": "yellow"}.get(decision, "cyan")
+    return {ALLOWED: "green", BLOCKED: "red", ESCALATE: "yellow"}.get(decision, "cyan")
 
 
-def panel(title: str, rows: list[tuple[str, str, str | None]], width: int = 60) -> None:
-    bar = "─" * (width - 2)
-    print("┌" + bar + "┐")
-    print("│ " + title.ljust(width - 3) + "│")
-    print("├" + bar + "┤")
+# ---------------------------------------------------------------- rendering
+def rule(text: str) -> None:
+    print(_c(f"\n── {text} ──", "gold"))
+
+
+def card(title: str, rows: list[tuple[str, str, str | None]], width: int = 58) -> None:
+    print("┌─ " + title + " " + "─" * max(0, width - 5 - len(title)) + "┐")
     inner = width - 3
     for label, value, color in rows:
-        label_str = f"{label:<17}"
+        label_str = f"{label:<16}"
         avail = inner - len(label_str)
-        val = value if len(value) <= avail else (value[:max(0, avail - 1)] + "…")
+        val = value if len(value) <= avail else value[:max(0, avail - 1)] + "…"
         pad = max(0, inner - len(label_str) - len(val))
-        print("│ " + label_str + _c(val, color) + (" " * pad) + "│")
-    print("└" + bar + "┘")
+        print("│ " + label_str + _c(val, color) + " " * pad + "│")
+    print("└" + "─" * (width - 2) + "┘")
 
 
-def _short(p) -> str:
-    p = Path(p)
-    try:
-        return str(p.relative_to(ROOT)).replace("\\", "/")
-    except ValueError:
-        return p.name
+def banner() -> None:
+    w = 48
+    def ln(t: str) -> str:
+        return "│" + t.center(w - 2) + "│"
+    print(_c("╭" + "─" * (w - 2) + "╮", "gold"))
+    print(_c(ln("LANDAUER"), "bold"))
+    print(ln("Runtime Constitution for AI Agents"))
+    print(_c("╰" + "─" * (w - 2) + "╯", "gold"))
 
 
-def preflight_panel(policy_path: str, hermes_disp, gpu_disp, treasury_mode: str) -> None:
-    """Live-checked sponsor/system roles — the first thing a judge sees: who proposes the work, who
-    enforces the constitution, who proves the spend, who proves the compute, and where receipts go."""
-    tre = ("Stripe TEST", "green") if treasury_mode == "test" else ("simulated (no test key)", "yellow")
-    panel("LANDAUER LIVE DEMO — PREFLIGHT (1/2)", [
-        ("Agent runtime:", hermes_disp[0], hermes_disp[1]),
-        ("Proposal format:", "structured JSON", None),
-        ("Policy source:", _short(policy_path), "cyan"),
-        ("Treasury:", tre[0], tre[1]),
-        ("GPU telemetry:", gpu_disp[0], gpu_disp[1]),
-        ("Ledger:", "JSONL receipts (per decision)", None),
-    ])
-
-
-def constitution_panel(policy, treasury_mode: str = "test") -> None:
-    tre = "Stripe test" if treasury_mode == "test" else "simulated, no test key"
-    panel("LANDAUER RUNTIME CONSTITUTION (2/2)  ·  " + policy.policy_version, [
-        ("Agent:", policy.agent_id, "cyan"),
-        ("Treasury:", f"${policy.treasury.budget_usd:.2f} {policy.treasury.currency} ({tre})", None),
-        ("Max USD/task:", f"${policy.limits.max_usd_per_task:.2f}", None),
-        ("Max joules:", f"{policy.limits.max_joules_per_task:,.0f} J", None),
-        ("Max runtime:", f"{policy.limits.max_runtime_seconds:.0f} s", None),
-        ("Human required:", str(policy.approvals.human_required).upper(), None),
-        ("Override USD/J:", f"{policy.approvals.human_can_override_usd} / {policy.approvals.human_can_override_joules}  (cap below the human)", None),
-    ])
-
-
-def decision_panel(act_title: str, decision, receipt_id: str, extra: list[tuple[str, str, str | None]]):
-    usd_line = "—"
-    if decision.usd_estimate is not None:
-        verdict = "FAIL" if (decision.usd_cap is not None and decision.usd_estimate > decision.usd_cap) else "PASS"
-        usd_line = f"${decision.usd_estimate:.2f} / ${decision.usd_cap:.2f} {verdict}"
-    j_line = "—"
-    if decision.joules_estimate is not None:
-        verdict = "FAIL" if (decision.joules_cap is not None and decision.joules_estimate > decision.joules_cap) else "PASS"
-        j_line = f"{decision.joules_estimate:,.0f} / {decision.joules_cap:,.0f} J {verdict}"
-    rows = [
-        ("Action:", decision.action, "cyan"),
-        ("Human approval:", "YES" if decision.human_approved else "NO", None),
-        ("USD budget:", usd_line, None),
-        ("Joule budget:", j_line, None),
-    ]
-    rows += extra
-    rows += [
-        ("Decision:", decision.decision.upper(), _decision_color(decision.decision)),
-        ("Reason:", decision.reason, _decision_color(decision.decision)),
-        ("Receipt:", receipt_id, "dim"),
-    ]
-    panel(act_title, rows)
+def intro(policy, hermes_disp, stripe_mode, gpu_state, no_anim: bool) -> None:
+    def s(t: float):
+        if not no_anim:
+            time.sleep(t)
+    banner()
     print()
+    for line in ("Hermes proposes actions.", "Stripe accounts for spend.",
+                 "NVIDIA measures compute.", "Landauer enforces the cap."):
+        print("  " + line); s(0.14)
+    print("\nInitializing..."); s(0.25)
+    lim = policy.limits
+    checks = [
+        (f"Constitution loaded — {policy.policy_version}", "green"),
+        (f"Caps armed — ${lim.max_usd_per_task:,.0f} / {lim.max_joules_per_task:,.0f} J / {lim.max_runtime_seconds:.0f} s", "green"),
+        (f"Credential scopes loaded ({len(policy.credentials.allowed_scopes)})", "green"),
+        (f"Hermes runtime: {hermes_disp[0]}", hermes_disp[1]),
+        (f"Stripe treasury: {stripe_mode[0]}", stripe_mode[1]),
+        (f"NVIDIA telemetry: {gpu_state[0]}", gpu_state[1]),
+        ("Reality Ledger armed", "green"),
+    ]
+    for text, col in checks:
+        print("  " + _c("✓", col) + " " + _c(text, col)); s(0.26)
+    print()
+
+
+def constitution_card(policy) -> None:
+    card("LANDAUER CONSTITUTION", [
+        ("Policy:", policy.policy_version, "cyan"),
+        ("USD cap:", f"${policy.limits.max_usd_per_task:,.2f} / action", None),
+        ("Joule cap:", f"{policy.limits.max_joules_per_task:,.0f} J / action", None),
+        ("Runtime cap:", f"{policy.limits.max_runtime_seconds:.0f} s / action", None),
+        ("Public actions:", "require human review", None),
+        ("Override USD/J:", "off / off  (cap below the human)", None),
+        ("Cred scopes:", f"{len(policy.credentials.allowed_scopes)} granted", None),
+    ])
+    for sc in policy.credentials.allowed_scopes:
+        print(_c(f"     · {sc}", "dim"))
+    print()
+
+
+def decision_card(*, proposal: str, actor: str, decision: str, reason: str, receipt: str,
+                  usd=None, usd_cap=None, joules=None, joules_cap=None, joules_label: str = "",
+                  stripe_obj: str | None = None, human_approved: bool = False) -> None:
+    col = _decision_color(decision)
+    rows = [
+        ("Proposal:", proposal, "cyan"),
+        ("Agent:", actor, None),
+        ("Decision:", VERB.get(decision, decision.upper()), col),
+        ("Reason:", reason, col),
+    ]
+    if usd is not None:
+        rows.append(("USD:", f"${usd:,.2f} / ${usd_cap:,.2f}", None))
+    if joules is not None:
+        tag = f" {joules_label}" if joules_label else ""
+        rows.append(("Joules:", f"{joules:,.0f} J{tag} / {joules_cap:,.0f} J cap", None))
+    if stripe_obj:
+        rows.append(("Stripe obj:", f"{stripe_obj} (test)", "cyan"))
+    if decision == BLOCKED and human_approved:
+        rows.append(("Human approval:", "present — not sufficient", col))
+    elif decision == ESCALATE:
+        rows.append(("Human approval:", "required — routed to human", col))
+    rows.append(("Receipt:", receipt, "dim"))
+    card("LANDAUER DECISION", rows)
+    print()
+
+
+def receipt_replay(record: dict) -> None:
+    rule(f"Receipt replay — {record['receipt_id']}")
+    replay = {
+        "decision": record["decision"],
+        "reason_code": record["reason"],
+        "agent_id": record["agent_id"],
+        "human_approval": record["human_approved"],
+        "policy_cap_joules": record["joules_cap"],
+        "estimated_joules": record["joules_estimate"],
+        "timestamp": record["timestamp"],
+        "receipt_id": record["receipt_id"],
+    }
+    print(_c(json.dumps(replay, indent=2), "cyan"))
+    print()
+
+
+def accounting_table(results: list[dict]) -> None:
+    rule("Per-agent resource accounting")
+    agg: dict[str, dict] = {}
+    for r in results:
+        a = agg.setdefault(r["actor"], {"usd": 0.0, "joules": 0.0, "proj": False,
+                                        ALLOWED: 0, BLOCKED: 0, ESCALATE: 0})
+        a["usd"] += r["usd_spent"]
+        a["joules"] += r["joules"]
+        a["proj"] = a["proj"] or r["projected"]
+        a[r["decision"]] += 1
+    print(_c(f"   {'agent_id':<26}{'usd_spent':<12}{'joules_used':<14}{'allowed':<9}{'blocked':<9}{'escalated':<9}", "dim"))
+    for actor, a in agg.items():
+        usd_str = f"${a['usd']:,.2f}"
+        j_str = f"{a['joules']:,.0f} J" + ("*" if a["proj"] else "")
+        print(f"   {actor:<26}{usd_str:<12}{j_str:<14}{a[ALLOWED]:<9}{a[BLOCKED]:<9}{a[ESCALATE]:<9}")
+    print(_c("   * projected or modeled (not a real measurement)", "dim"))
+    print(_c("   As agent autonomy and spend grow, companies must see compute usage PER AGENT —", "yellow"))
+    print(_c("   not only cloud/API spend.", "yellow"))
+    print()
+
+
+def scoreboard(results: list[dict]) -> None:
+    rule("LANDAUER REALITY LEDGER")
+    mark = {ALLOWED: ("✓", "green"), BLOCKED: ("✕", "red"), ESCALATE: ("!", "yellow")}
+    for r in results:
+        m, col = mark[r["decision"]]
+        print(_c(f"   {m} {r['label']:<34}{r['reason']}", col))
+    n = len(results)
+    a = sum(1 for r in results if r["decision"] == ALLOWED)
+    b = sum(1 for r in results if r["decision"] == BLOCKED)
+    e = sum(1 for r in results if r["decision"] == ESCALATE)
+    print()
+    print(f"   {n} proposals checked · " + _c(f"{a} allowed", "green") + " · "
+          + _c(f"{b} blocked", "red") + " · " + _c(f"{e} escalated", "yellow")
+          + f" · {n} receipts written")
+    print()
+    print(_c("   Humans set the rules. Agents do the work. Landauer leaves the receipt.", "bold"))
 
 
 # ---------------------------------------------------------------- the run
@@ -135,9 +218,10 @@ def main() -> int:
     ap.add_argument("--real-stripe", action=argparse.BooleanOptionalAction, default=True)
     ap.add_argument("--real-hermes", action=argparse.BooleanOptionalAction, default=True)
     ap.add_argument("--mock-nvidia", action="store_true", help="force CPU workload (skip the real GPU load)")
-    ap.add_argument("--gpu-seconds", type=float, default=12.0)
+    ap.add_argument("--gpu-seconds", type=float, default=2.5, help="allowed-compute window (kept under the joule cap)")
     ap.add_argument("--hermes-path", default=HERMES_WIN)
-    ap.add_argument("--keep-ledger", action="store_true", help="append to the existing ledger instead of clearing")
+    ap.add_argument("--no-anim", action="store_true", help="skip the intro timing (for re-takes / CI)")
+    ap.add_argument("--keep-ledger", action="store_true", help="append instead of clearing the ledger")
     args = ap.parse_args()
 
     policy = load_policy(args.policy)
@@ -145,174 +229,134 @@ def main() -> int:
     if not args.keep_ledger:
         ledger.clear()
     treasury = StripeBudgetAdapter(policy.treasury.budget_usd, allow_real=args.real_stripe)
+    cap_usd = policy.limits.max_usd_per_task
+    cap_j = policy.limits.max_joules_per_task
 
-    print(_c("\nLANDAUER — a runtime constitution for autonomous agents\n", "bold"))
-    print("Hermes proposes the work · Landauer enforces the constitution · Stripe proves the spend · "
-          "NVIDIA proves the compute · every decision leaves a receipt.\n")
-
-    # ---- Preflight (1/2): live-checked sponsor/system roles ----
-    if args.real_hermes:
-        av = hermes_available(args.hermes_path)
-        if av.get("available"):
-            toks = (av.get("version") or "").split()
-            ver = next((t for t in toks if t.startswith("v") and t[1:2].isdigit()), "")
-            hermes_disp = (f"Hermes LIVE — hermes.exe {ver}".strip(), "green")
-        else:
-            hermes_disp = ("Hermes fallback — unreachable", "yellow")
+    # --- live-system states (honest; drive the intro checks). One Hermes probe, reused below. ---
+    av = hermes_available(args.hermes_path) if args.real_hermes else {"available": False}
+    if args.real_hermes and av.get("available"):
+        toks = (av.get("version") or "").split()
+        ver = next((t for t in toks if t.startswith("v") and t[1:2].isdigit()), "")
+        hermes_disp = (f"LIVE — hermes.exe {ver}".strip(), "green")
+    elif args.real_hermes:
+        hermes_disp = ("fallback — unreachable", "yellow")
     else:
-        hermes_disp = ("Hermes fallback — --no-real-hermes", "yellow")
+        hermes_disp = ("fallback — deterministic", "yellow")
+    stripe_mode = (("TEST mode", "green") if treasury.mode == "test" else ("simulated (no test key)", "yellow"))
+    real_gpu = nvidia.available() and gpu_workload.gpu_available() and not args.mock_nvidia
+    gpu_state = (("nvidia-smi REAL · GPU load", "green") if real_gpu
+                 else ("nvidia-smi REAL · CPU workload", "green") if nvidia.available()
+                 else ("MODELED fallback · no GPU", "yellow"))
 
-    real_gpu_load = nvidia.available() and gpu_workload.gpu_available() and not args.mock_nvidia
-    if nvidia.available() and real_gpu_load:
-        gpu_disp = ("NVIDIA nvidia-smi REAL · GPU load", "green")
-    elif nvidia.available():
-        gpu_disp = ("NVIDIA nvidia-smi REAL · CPU workload", "green")
-    else:
-        gpu_disp = ("MODELED fallback · no GPU", "yellow")
+    intro(policy, hermes_disp, stripe_mode, gpu_state, args.no_anim)
+    constitution_card(policy)
 
-    preflight_panel(args.policy, hermes_disp, gpu_disp, treasury.mode)
-    print(_c(f"   GPU: {nvidia.device_name()}", "dim"))
-    print()
+    results: list[dict] = []
 
-    # ---- Constitution (2/2): the human-defined rules the agent runs under ----
-    constitution_panel(policy, treasury.mode)
-    print(_c(f"   source: {_short(args.policy)}", "dim"))
-    print()
-
-    def gate_and_log(req: ActionRequest, title: str, *, on_allowed=None):
-        """Evaluate -> (if allowed) execute side effect -> write receipt -> print panel."""
-        decision = evaluate(policy, req)
-        runtime = req.runtime_seconds
-        extra: list[tuple[str, str, str | None]] = []
-        if decision.decision == ALLOWED and on_allowed is not None:
-            eff = on_allowed(decision) or {}
-            extra = eff.get("extra", [])
-            runtime = eff.get("runtime", runtime)
-        else:
-            if decision.reason == Reason.USD_CAP_EXCEEDED:
-                extra.append(("Stripe:", "not charged — refused pre-execution", "red"))
-            if req.note:
-                extra.append(("Note:", req.note, "dim"))
-        rec = ledger.write(decision, runtime_seconds=runtime)
-        decision_panel(title, decision, rec["receipt_id"], extra)
-        return decision
-
-    # ---- Scenario A — Hermes proposes an API task; spend is under cap -> ALLOWED -> real Stripe charge
-    print(_c("── Scenario A — allowed API action (Hermes + Stripe) ──", "gold"))
+    # ---- Scenario 1 — operator: allowed API spend (Hermes LIVE proposal + real Stripe charge) ----
+    rule("Scenario 1 — allowed API action  ·  Hermes → Stripe")
     proposal = hermes_adapter.propose_action(
-        "Qualify a batch of inbound leads with one API model call. Keep spend small.",
-        hermes_path=args.hermes_path, real=args.real_hermes)
-    raw_usd = float(proposal.get("usd_estimate", 0.84) or 0.84)
-    usd_a = max(min(raw_usd, 0.99), 0.50)  # clamp to a real Stripe-chargeable amount, under the $1.00 cap
-    _src = proposal.get("source")
-    src_disp = _c("Hermes LIVE", "green") if _src == "hermes" else _c("Hermes fallback", "yellow")
-    _json_view = json.dumps({k: proposal.get(k) for k in
-                             ("action", "usd_estimate", "joules_estimate", "runtime_seconds") if k in proposal})
-    print(f"   {src_disp} (hermes.exe) proposed a structured action:")
-    print(_c(f"     {_json_view}", "cyan"))
-    if proposal.get("rationale"):
-        print(f"     rationale: {str(proposal['rationale'])[:62]}")
-    print(f"   → Landauer gates it as call_api_model @ ${usd_a:.2f} "
-          f"(clamped to a Stripe-chargeable amount under the ${policy.limits.max_usd_per_task:.2f} cap)\n")
+        "Qualify a batch of inbound leads with one API model call.",
+        hermes_path=args.hermes_path, real=args.real_hermes, available=av)
+    psrc = _c("Hermes LIVE", "green") if proposal.get("source") == "hermes" else _c("Hermes fallback", "yellow")
+    jview = json.dumps({k: proposal.get(k) for k in
+                        ("action", "joules_estimate", "runtime_seconds") if k in proposal})
+    print(f"   {OPERATOR}  →  proposes via {psrc} (hermes.exe):")
+    print(_c(f"     {jview}", "cyan"))
+    print(f"   → Landauer meters the spend at ${42.00:,.2f} (operator API tier) vs ${cap_usd:,.2f} cap …\n")
+    req = ActionRequest(action="call_api_model", actor=OPERATOR, human_approved=True,
+                        usd_estimate=42.00, joules_estimate=0.0, runtime_seconds=3)
+    d = evaluate(policy, req)
+    stripe_obj = None
+    if d.is_allowed:
+        res = treasury.charge(42.00, "Landauer demo — small API action")
+        d.stripe_object_id = res["stripe_object_id"]
+        stripe_obj = res["stripe_object_id"] if res["real"] else None
+    rec = ledger.write(d, runtime_seconds=3)
+    decision_card(proposal="stripe.small_api_action", actor=OPERATOR, decision=d.decision, reason=d.reason,
+                  receipt=rec["receipt_id"], usd=42.00, usd_cap=cap_usd, stripe_obj=stripe_obj, human_approved=True)
+    foot = ("test-mode payment object created; policy enforcement is real." if stripe_obj
+            else "simulated treasury (no test key); policy enforcement is real.")
+    print(_c(f"   ↳ {foot}\n", "dim"))
+    results.append({"actor": OPERATOR, "label": "API action allowed", "decision": d.decision,
+                    "reason": d.reason, "usd_spent": 42.00 if d.is_allowed else 0.0, "joules": 0, "projected": False})
 
-    def _charge(decision):
-        res = treasury.charge(usd_a, "Landauer demo — allowed API model call")
-        decision.stripe_object_id = res["stripe_object_id"]
-        tag = "REAL" if res["real"] else "sim"
-        return {"extra": [
-            ("Stripe mode:", treasury.mode, None),
-            ("Charged:", f"${usd_a:.2f}  [{tag}]  remaining ${res['remaining']:.2f}", "green" if res["real"] else "yellow"),
-            ("Stripe id:", res["stripe_object_id"], "cyan"),
-        ]}
+    # ---- Scenario 2 — operator: blocked overspend ($4,800 > $500) ----
+    rule("Scenario 2 — blocked API overspend  ·  Stripe cap below the human")
+    print(f"   {OPERATOR}  →  proposes: stripe.large_api_action @ ${4800.00:,.2f}\n")
+    req = ActionRequest(action="call_api_model", actor=OPERATOR, human_approved=True,
+                        usd_estimate=4800.00, joules_estimate=0.0, runtime_seconds=3)
+    d = evaluate(policy, req)
+    rec = ledger.write(d, runtime_seconds=3)
+    decision_card(proposal="stripe.large_api_action", actor=OPERATOR, decision=d.decision, reason=d.reason,
+                  receipt=rec["receipt_id"], usd=4800.00, usd_cap=cap_usd, human_approved=True)
+    print(_c("   ↳ no Stripe object created — refused pre-execution; policy enforcement is real.\n", "dim"))
+    results.append({"actor": OPERATOR, "label": "Stripe overspend blocked", "decision": d.decision,
+                    "reason": d.reason, "usd_spent": 0.0, "joules": 0, "projected": False})
 
-    gate_and_log(ActionRequest(action="call_api_model", human_approved=True, usd_estimate=usd_a,
-                               joules_estimate=0.0, runtime_seconds=3.0), "ACTION: call_api_model",
-                 on_allowed=_charge)
-
-    # ---- Scenario B — Hermes proposes an expensive API task -> BLOCKED before any spend
-    print(_c("── Scenario B — blocked API overspend (Stripe cap below the human) ──", "gold"))
-    gate_and_log(ActionRequest(action="call_api_model", human_approved=True, usd_estimate=1.40,
-                               joules_estimate=0.0, runtime_seconds=3.0,
-                               note="retried larger — $1.40 > $1.00 cap"),
-                 "ACTION: call_api_model (expensive)")
-
-    # ---- Scenario C — Hermes proposes local GPU work; projection under cap -> ALLOWED -> measure REAL joules
-    print(_c("── Scenario C — allowed local compute (Hermes + NVIDIA, REAL joules) ──", "gold"))
-    use_gpu = nvidia.available() and gpu_workload.gpu_available() and not args.mock_nvidia
-    safe_s = policy.limits.max_joules_per_task / POWER_EST_W            # window that keeps the projection under cap
-    c_seconds = min(args.gpu_seconds, max(2.0, safe_s - 1.0))           # guarantee the 'allowed compute' proof shot
-    if c_seconds < args.gpu_seconds:
-        print(f"   (clamped this scene to {c_seconds:.0f}s so the projection stays under the "
-              f"{policy.limits.max_joules_per_task:,.0f} J cap — the 'allowed compute' shot is guaranteed)\n")
-    proj_c = nvidia.project_joules(POWER_EST_W, c_seconds)             # E ≈ P·t conservative projection for the gate
-
-    def _measure(decision):
-        if use_gpu:
-            tele = nvidia.measure(lambda: gpu_workload.gpu_matmul_load(c_seconds),
-                                  action_id="run_local_model", fallback_duration_s=c_seconds)
-            wl = "GPU matmul"
-        else:
-            tele = nvidia.measure(lambda: gpu_workload.cpu_fallback_load(c_seconds),
-                                  action_id="run_local_model", fallback_duration_s=c_seconds)
-            wl = "CPU fallback (no torch/CUDA)"
-        decision.nvidia_telemetry = {k: tele[k] for k in
-                                     ("joules", "avg_w", "peak_c", "samples", "source", "is_real", "device")}
-        is_real = tele["source"] == "nvidia-smi"
+    # ---- Scenario 3 — operator: allowed local compute, REAL measured joules under cap ----
+    rule("Scenario 3 — allowed local compute  ·  Hermes → NVIDIA (REAL joules)")
+    safe_s = cap_j / POWER_EST_W
+    c_seconds = min(args.gpu_seconds, max(1.5, safe_s - 0.5))   # keep the projection under the joule cap
+    proj = nvidia.project_joules(POWER_EST_W, c_seconds)
+    print(f"   {OPERATOR}  →  proposes: gpu.small_inference (projected {proj:,.0f} J ≤ {cap_j:,.0f} J cap)\n")
+    req = ActionRequest(action="run_local_model", actor=OPERATOR, human_approved=True,
+                        usd_estimate=0.0, joules_estimate=proj, runtime_seconds=c_seconds)
+    d = evaluate(policy, req)
+    tele = None
+    if d.is_allowed:
+        workload = gpu_workload.gpu_matmul_load if real_gpu else gpu_workload.cpu_fallback_load
+        tele = nvidia.measure(lambda: workload(c_seconds), action_id="run_local_model",
+                              fallback_duration_s=c_seconds)
+        d.nvidia_telemetry = {k: tele[k] for k in
+                              ("joules", "avg_w", "peak_c", "samples", "source", "is_real", "device")}
+        d.joules_estimate = tele["joules"]                    # receipt records the REAL measured ∫P·dt …
+        d.joules_measured = (tele["source"] == "nvidia-smi")  # … flagged measured when nvidia-smi is real
+    rec = ledger.write(d, runtime_seconds=(tele["runtime_s"] if tele else c_seconds))
+    is_real = bool(tele and tele["source"] == "nvidia-smi")
+    measured_j = tele["joules"] if tele else 0.0
+    decision_card(proposal="gpu.small_inference", actor=OPERATOR, decision=d.decision, reason=d.reason,
+                  receipt=rec["receipt_id"], joules=measured_j, joules_cap=cap_j,
+                  joules_label=("measured" if is_real else "modeled"), human_approved=True)
+    if tele:
         src = "REAL nvidia-smi" if is_real else "MODELED fallback"
-        label = "Measured (REAL):" if is_real else "Estimated (MODELED):"
-        extra = [
-            ("Workload:", wl, None),
-            (label, f"{tele['joules']:,.0f} J  ∫P·dt  [{src}]", "green" if is_real else "yellow"),
-            ("Avg power / peak:", f"{tele['avg_w']:.1f} W / {tele['peak_c']:.0f} °C ({tele['samples']} samples)", None),
-            ("Runtime:", f"{tele['runtime_s']:.1f} s wall", None),
-        ]
-        if tele.get("telemetry_incomplete"):
-            extra.append(("⚠ telemetry:", "incomplete (nvidia-smi returned <2 samples)", "yellow"))
-        return {"runtime": tele["runtime_s"], "extra": extra}
+        print(_c(f"   ↳ {tele['avg_w']:.1f} W avg · {tele['peak_c']:.0f} °C · {tele['samples']} samples "
+                 f"· {tele['runtime_s']:.1f} s  [{src}]\n", "dim"))
+    results.append({"actor": OPERATOR, "label": "GPU job allowed", "decision": d.decision,
+                    "reason": d.reason, "usd_spent": 0.0, "joules": measured_j, "projected": not is_real})
 
-    gate_and_log(ActionRequest(action="run_local_model", human_approved=True, usd_estimate=0.0,
-                               joules_estimate=proj_c, runtime_seconds=args.gpu_seconds, joules_measured=False,
-                               note="projected from the agent's planned GPU job"),
-                 "ACTION: run_local_model", on_allowed=_measure)
+    # ---- Scenario 4 — researcher: human-approved, but joule projection exceeds cap -> BLOCKED ----
+    rule("Scenario 4 — human approval is NOT sufficient  ·  joule cap below the human")
+    print(f"   {RESEARCHER}  →  proposes: gpu.large_training (projected 18,400 J)\n")
+    req = ActionRequest(action="large_gpu_job", actor=RESEARCHER, human_approved=True,
+                        usd_estimate=0.0, joules_estimate=18400, runtime_seconds=20)
+    d = evaluate(policy, req)
+    rec_s4 = ledger.write(d, runtime_seconds=20)
+    decision_card(proposal="gpu.large_training", actor=RESEARCHER, decision=d.decision, reason=d.reason,
+                  receipt=rec_s4["receipt_id"], joules=18400, joules_cap=cap_j, joules_label="projected",
+                  human_approved=True)
+    print(_c("   ↳ a human approved this job; the joule cap refuses it anyway — enforced below the human.\n", "dim"))
+    results.append({"actor": RESEARCHER, "label": "Human-approved GPU job blocked", "decision": d.decision,
+                    "reason": d.reason, "usd_spent": 0.0, "joules": 18400, "projected": True})
 
-    # ---- Scenario D/E — big GPU job; human approves, but the joule projection exceeds the cap -> BLOCKED.
-    #      This single panel satisfies both the handoff's D (blocked GPU) and E (human approval not sufficient).
-    print(_c("── Scenario D/E — human approval is NOT sufficient: approved YES, joule cap FAIL → BLOCKED ──", "gold"))
-    proj_d = nvidia.project_joules(POWER_EST_W, 25.0)  # ~7,125 J projected (> 5,000 cap)
-    gate_and_log(ActionRequest(action="large_gpu_job", human_approved=True, usd_estimate=0.0,
-                               joules_estimate=proj_d, runtime_seconds=25.0,
-                               note="human approved — joule cap refuses"),
-                 "ACTION: large_gpu_job (human-approved)")
+    # ---- Scenario 5 — publisher: public/irreversible action -> ESCALATE ----
+    rule("Scenario 5 — public action escalated  ·  governs irreversible/public actions")
+    print(f"   {PUBLISHER}  →  proposes: comms.public_broadcast (post publicly / external message)\n")
+    req = ActionRequest(action="public_post", actor=PUBLISHER, human_approved=False,
+                        usd_estimate=0.0, joules_estimate=12, runtime_seconds=1)
+    d = evaluate(policy, req)
+    rec = ledger.write(d, runtime_seconds=1)
+    decision_card(proposal="comms.public_broadcast", actor=PUBLISHER, decision=d.decision, reason=d.reason,
+                  receipt=rec["receipt_id"], joules=12, joules_cap=cap_j, joules_label="projected",
+                  human_approved=False)
+    print(_c("   ↳ Landauer governs irreversible/public actions, not only spend.\n", "dim"))
+    results.append({"actor": PUBLISHER, "label": "Public action escalated", "decision": d.decision,
+                    "reason": d.reason, "usd_spent": 0.0, "joules": 12, "projected": True})
 
-    # ---- Autonomy montage: many actions decided by policy, humans pulled in only on escalate
-    print(_c("── Autonomy montage — policy-defined autonomy (humans re-engaged only on ESCALATE) ──", "gold"))
-    print("   (actions are session pre-authorized; the human is pulled back in only where policy escalates)\n")
-    montage = [
-        ActionRequest(action="summarize_docs", human_approved=True, usd_estimate=0.0, joules_estimate=40, runtime_seconds=2),
-        ActionRequest(action="call_api_model", human_approved=True, usd_estimate=1.40, joules_estimate=0, runtime_seconds=3),
-        ActionRequest(action="run_local_model", human_approved=True, usd_estimate=0.0, joules_estimate=1800, runtime_seconds=8),
-        ActionRequest(action="public_post", human_approved=False, usd_estimate=0.0, joules_estimate=10, runtime_seconds=1),
-        # credential_scope NOT supplied — the constitution's required_credential_scope drives the denial:
-        ActionRequest(action="export_customer_data", human_approved=True, usd_estimate=0.0, joules_estimate=20, runtime_seconds=2),
-        ActionRequest(action="large_gpu_job", human_approved=True, usd_estimate=0.0, joules_estimate=9000, runtime_seconds=40),
-    ]
-    for req in montage:
-        d = evaluate(policy, req)
-        rec = ledger.write(d, runtime_seconds=req.runtime_seconds)
-        verb = _c(f"{d.decision.upper():8}", _decision_color(d.decision))
-        print(f"   {req.action:22} → {verb} {d.reason:32} [{rec['receipt_id']}]")
-    print()
-
-    # ---- Close
-    rows = ledger.read_all()
-    counts = {}
-    for r in rows:
-        counts[r["decision"]] = counts.get(r["decision"], 0) + 1
-    print(_c("── Reality Ledger ──", "gold"))
-    print(f"   {len(rows)} receipts written → {args.ledger}")
-    print(f"   {counts.get('allowed',0)} allowed · {counts.get('blocked',0)} blocked · {counts.get('escalate',0)} escalate")
-    print(f"   View: python demo/show_ledger.py\n")
-    print(_c("Humans set the rules. Agents do the work. Landauer leaves the receipt.", "bold"))
+    # ---- Receipt replay (the killer receipt) → per-agent accounting → scoreboard ----
+    receipt_replay(rec_s4)
+    accounting_table(results)
+    scoreboard(results)
     return 0
 
 
