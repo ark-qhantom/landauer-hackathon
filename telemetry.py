@@ -199,7 +199,7 @@ class FallbackSimulator(TelemetryProvider):
     """
 
     def __init__(self, run_id: str, action_id: str, intensity: float = 0.5, duration_s: float = 2.0,
-                 idle_W: float = 60.0, max_W: float = 200.0, idle_temp_C: float = 38.0):
+                 idle_W: float = 4.5, max_W: float = 285.0, idle_temp_C: float = 28.0):
         self.run_id = run_id
         self.action_id = action_id
         self.intensity = max(0.0, min(1.0, intensity))

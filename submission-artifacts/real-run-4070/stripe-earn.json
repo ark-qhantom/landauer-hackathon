@@ -1,0 +1,20 @@
+{
+  "status": "real",
+  "mode": "test",
+  "currency": "usd",
+  "offer_name": "LeadForge Micro-Agency",
+  "price_usd": 49.0,
+  "ids": {
+    "product": "prod_UmL26c0GIh7KMN",
+    "price": "price_1TmmMD6NWg0SW1CVOzNqm1i1",
+    "payment_link": "plink_1TmmME6NWg0SW1CVz2Wd6YR3",
+    "payment_intent": "pi_3TmmME6NWg0SW1CV158mzzSQ",
+    "charge": "ch_3TmmME6NWg0SW1CV1a7O4eaP",
+    "balance_txn": ""
+  },
+  "payment_link_url": "https://buy.stripe.com/test_4gMcMYazLa2s7TteFy0480e",
+  "amount_captured_cents": 4900,
+  "net_cents": null,
+  "livemode": false,
+  "note": "REAL test-mode Stripe objects. Paste any id into your Stripe test dashboard to verify."
+}
