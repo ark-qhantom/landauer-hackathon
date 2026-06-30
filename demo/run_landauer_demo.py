@@ -62,6 +62,15 @@ def _decision_color(decision: str) -> str:
     return {ALLOWED: "green", BLOCKED: "red", ESCALATE: "yellow"}.get(decision, "cyan")
 
 
+_HOLD_SECONDS = 0.0   # set by main(); a brief pause after each card so the take is easy to cut (skip with --no-anim)
+
+
+def _hold(seconds: float | None = None) -> None:
+    s = _HOLD_SECONDS if seconds is None else seconds
+    if s > 0:
+        time.sleep(s)
+
+
 # ---------------------------------------------------------------- rendering
 def rule(text: str) -> None:
     print(_c(f"\n── {text} ──", "gold"))
@@ -85,7 +94,7 @@ def banner() -> None:
         return "│" + t.center(w - 2) + "│"
     print(_c("╭" + "─" * (w - 2) + "╮", "gold"))
     print(_c(ln("LANDAUER"), "bold"))
-    print(ln("Runtime Constitution for AI Agents"))
+    print(ln("Runtime Constitution for Hermes Agents"))
     print(_c("╰" + "─" * (w - 2) + "╯", "gold"))
 
 
@@ -127,6 +136,7 @@ def constitution_card(policy) -> None:
     for sc in policy.credentials.allowed_scopes:
         print(_c(f"     · {sc}", "dim"))
     print()
+    _hold()
 
 
 def decision_card(*, proposal: str, actor: str, decision: str, reason: str, receipt: str,
@@ -153,6 +163,7 @@ def decision_card(*, proposal: str, actor: str, decision: str, reason: str, rece
     rows.append(("Receipt:", receipt, "dim"))
     card("LANDAUER DECISION", rows)
     print()
+    _hold()
 
 
 def receipt_replay(record: dict) -> None:
@@ -190,6 +201,7 @@ def accounting_table(results: list[dict]) -> None:
     print(_c("   As agent autonomy and spend grow, companies must see compute usage PER AGENT —", "yellow"))
     print(_c("   not only cloud/API spend.", "yellow"))
     print()
+    _hold()
 
 
 def scoreboard(results: list[dict]) -> None:
@@ -206,8 +218,20 @@ def scoreboard(results: list[dict]) -> None:
     print(f"   {n} proposals checked · " + _c(f"{a} allowed", "green") + " · "
           + _c(f"{b} blocked", "red") + " · " + _c(f"{e} escalated", "yellow")
           + f" · {n} receipts written")
+    _hold()
+
+
+def end_card() -> None:
+    w = 44
+    def ln(t: str) -> str:
+        return "│" + t.center(w - 2) + "│"
     print()
-    print(_c("   Humans set the rules. Agents do the work. Landauer leaves the receipt.", "bold"))
+    print(_c("╭" + "─" * (w - 2) + "╮", "gold"))
+    print(_c(ln("Humans set the constitution."), "bold"))
+    print(_c(ln("Hermes agents do the work."), "bold"))
+    print(_c(ln("Landauer leaves the receipt."), "bold"))
+    print(_c("╰" + "─" * (w - 2) + "╯", "gold"))
+    _hold(1.0)
 
 
 # ---------------------------------------------------------------- the run
@@ -223,6 +247,9 @@ def main() -> int:
     ap.add_argument("--no-anim", action="store_true", help="skip the intro timing (for re-takes / CI)")
     ap.add_argument("--keep-ledger", action="store_true", help="append instead of clearing the ledger")
     args = ap.parse_args()
+
+    global _HOLD_SECONDS
+    _HOLD_SECONDS = 0.0 if args.no_anim else 0.8   # brief per-card hold for recordability; --no-anim = instant
 
     policy = load_policy(args.policy)
     ledger = Ledger(args.ledger)
@@ -294,13 +321,13 @@ def main() -> int:
     results.append({"actor": OPERATOR, "label": "Stripe overspend blocked", "decision": d.decision,
                     "reason": d.reason, "usd_spent": 0.0, "joules": 0, "projected": False})
 
-    # ---- Scenario 3 — operator: allowed local compute, REAL measured joules under cap ----
+    # ---- Scenario 3 — researcher: allowed local compute, REAL measured joules under cap ----
     rule("Scenario 3 — allowed local compute  ·  Hermes → NVIDIA (REAL joules)")
     safe_s = cap_j / POWER_EST_W
     c_seconds = min(args.gpu_seconds, max(1.5, safe_s - 0.5))   # keep the projection under the joule cap
     proj = nvidia.project_joules(POWER_EST_W, c_seconds)
-    print(f"   {OPERATOR}  →  proposes: gpu.small_inference (projected {proj:,.0f} J ≤ {cap_j:,.0f} J cap)\n")
-    req = ActionRequest(action="run_local_model", actor=OPERATOR, human_approved=True,
+    print(f"   {RESEARCHER}  →  proposes: gpu.small_inference (projected {proj:,.0f} J ≤ {cap_j:,.0f} J cap)\n")
+    req = ActionRequest(action="run_local_model", actor=RESEARCHER, human_approved=True,
                         usd_estimate=0.0, joules_estimate=proj, runtime_seconds=c_seconds)
     d = evaluate(policy, req)
     tele = None
@@ -315,14 +342,14 @@ def main() -> int:
     rec = ledger.write(d, runtime_seconds=(tele["runtime_s"] if tele else c_seconds))
     is_real = bool(tele and tele["source"] == "nvidia-smi")
     measured_j = tele["joules"] if tele else 0.0
-    decision_card(proposal="gpu.small_inference", actor=OPERATOR, decision=d.decision, reason=d.reason,
+    decision_card(proposal="gpu.small_inference", actor=RESEARCHER, decision=d.decision, reason=d.reason,
                   receipt=rec["receipt_id"], joules=measured_j, joules_cap=cap_j,
                   joules_label=("measured" if is_real else "modeled"), human_approved=True)
     if tele:
         src = "REAL nvidia-smi" if is_real else "MODELED fallback"
         print(_c(f"   ↳ {tele['avg_w']:.1f} W avg · {tele['peak_c']:.0f} °C · {tele['samples']} samples "
                  f"· {tele['runtime_s']:.1f} s  [{src}]\n", "dim"))
-    results.append({"actor": OPERATOR, "label": "GPU job allowed", "decision": d.decision,
+    results.append({"actor": RESEARCHER, "label": "GPU job allowed", "decision": d.decision,
                     "reason": d.reason, "usd_spent": 0.0, "joules": measured_j, "projected": not is_real})
 
     # ---- Scenario 4 — researcher: human-approved, but joule projection exceeds cap -> BLOCKED ----
@@ -335,7 +362,8 @@ def main() -> int:
     decision_card(proposal="gpu.large_training", actor=RESEARCHER, decision=d.decision, reason=d.reason,
                   receipt=rec_s4["receipt_id"], joules=18400, joules_cap=cap_j, joules_label="projected",
                   human_approved=True)
-    print(_c("   ↳ a human approved this job; the joule cap refuses it anyway — enforced below the human.\n", "dim"))
+    print(_c("   ↳ a human approved this job — approval is not a bypass; the joule cap is enforced below the human.\n", "dim"))
+    _hold(0.8)
     results.append({"actor": RESEARCHER, "label": "Human-approved GPU job blocked", "decision": d.decision,
                     "reason": d.reason, "usd_spent": 0.0, "joules": 18400, "projected": True})
 
@@ -357,6 +385,7 @@ def main() -> int:
     receipt_replay(rec_s4)
     accounting_table(results)
     scoreboard(results)
+    end_card()
     return 0
 
 
