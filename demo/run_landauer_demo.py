@@ -129,32 +129,74 @@ def intro(policy, hermes_disp, stripe_mode, gpu_state, no_anim: bool) -> None:
     print()
 
 
-def opener(badge: str = "NOUS × NVIDIA") -> None:
-    w = 74
-    inner = w - 2
-    def fl(content: str = "") -> str:
-        return _c("║" + content.ljust(inner) + "║", "gold")
-    def fc(content: str, color: str = "gold") -> str:
-        return _c("║" + content.center(inner) + "║", color)
-    tag3 = "     Landauer leaves the receipt."
-    badge_str = f"[ {badge} ]"
-    pad = max(2, inner - len(tag3) - len(badge_str))
-    print(_c("╔" + "═" * inner + "╗", "gold"))
-    print(fl())
-    print(fc("L A N D A U E R", "goldb"))
-    print(fc("Runtime Constitution for Hermes Agents"))
-    print(fl())
-    print(fl("   Available Controls"))
-    print(fl("     spend caps  ·  joule caps  ·  credential scopes"))
-    print(fl("     runtime limits  ·  public-action review  ·  receipt ledger"))
-    print(fl())
-    print(fl("   Hermes Agent Runtime · Stripe Treasury · NVIDIA Telemetry · Ledger"))
-    print(fl())
-    print(fl("     Humans set the constitution."))
-    print(fl("     Hermes agents do the work."))
-    print(fl(tag3 + " " * pad + badge_str))
-    print(fl())
-    print(_c("╚" + "═" * inner + "╝", "gold"))
+_BLOCK = {
+    "L": ["█    ", "█    ", "█    ", "█    ", "█████"],
+    "A": [" ███ ", "█   █", "█████", "█   █", "█   █"],
+    "N": ["█   █", "██  █", "█ █ █", "█  ██", "█   █"],
+    "D": ["████ ", "█   █", "█   █", "█   █", "████ "],
+    "U": ["█   █", "█   █", "█   █", "█   █", " ███ "],
+    "E": ["█████", "█    ", "███  ", "█    ", "█████"],
+    "R": ["████ ", "█   █", "████ ", "█  █ ", "█   █"],
+}
+
+
+def _ascii_title(word: str) -> list[str]:
+    return [" ".join(_BLOCK[ch][r] for ch in word) for r in range(5)]
+
+
+def opener(policy) -> None:
+    W = 88
+    inner = W - 2
+    GOLD, GOLDB = "gold", "goldb"
+    lim = policy.limits
+
+    def frow(left, right=None):
+        lvis = sum(len(t) for t, _ in left)
+        lbody = "".join(_c(t, c) for t, c in left)
+        if right is not None:
+            rvis = sum(len(t) for t, _ in right)
+            rbody = "".join(_c(t, c) for t, c in right)
+            return _c("│", GOLD) + lbody + " " * max(1, inner - lvis - rvis) + rbody + _c("│", GOLD)
+        return _c("│", GOLD) + lbody + " " * max(0, inner - lvis) + _c("│", GOLD)
+
+    blank = _c("│" + " " * inner + "│", GOLD)
+    title = _ascii_title("LANDAUER")
+    controls = [
+        ("spend caps", "cap on $ spend per agent action  (Stripe-backed)"),
+        ("joule caps", "cap on compute energy per action  (NVIDIA ∫P·dt)"),
+        ("credential scopes", "only constitution-granted scopes may be used"),
+        ("runtime limits", "cap on wall-clock seconds per action"),
+        ("public-action review", "outward / irreversible actions routed to a human"),
+        ("receipt ledger", "every decision written as an auditable receipt"),
+    ]
+    status = (f"{policy.policy_version} · ${lim.max_usd_per_task:,.0f} cap · "
+              f"{lim.max_joules_per_task:,.0f} J cap · {lim.max_runtime_seconds:.0f} s · ")
+    pill = "\033[30;42m RTX AI Garage \033[0m"            # green pill (black on green)
+    badges_vis = len("NOUS × NVIDIA") + 3 + len(" RTX AI Garage ")
+
+    print(_c("┌" + "─" * inner + "┐", GOLD))
+    print(blank)
+    print(frow([("   ", None), (title[0], GOLDB)], [("Runtime Constitution v1   ", "gold")]))
+    print(frow([("   ", None), (title[1], GOLDB)], [(f"policy {policy.policy_version}   ", "dim")]))
+    print(frow([("   ", None), (title[2], GOLDB)]))
+    print(frow([("   ", None), (title[3], GOLDB)]))
+    print(frow([("   ", None), (title[4], GOLDB)]))
+    print(blank)
+    print(frow([("   ", None), ("Available Controls", GOLDB)]))
+    for label, desc in controls:
+        print(frow([("     ", None), (f"{label:<22}", GOLD), (desc, "dim")]))
+    print(blank)
+    print(frow([("   ", None), ("Backed by   ", GOLDB),
+                ("Hermes Runtime · Stripe Treasury · NVIDIA Telemetry · Reality Ledger", "gold")]))
+    print(blank)
+    print(frow([("   ", None), ("Humans set the constitution.", "gold")]))
+    print(frow([("   ", None), ("Hermes agents do the work.", "gold")]))
+    print(frow([("   ", None), ("Landauer leaves the receipt.", GOLDB)]))
+    print(blank)
+    print(frow([("   ", None), (status, "dim"), ("ready", "green")]))
+    print(_c("│", GOLD) + " " * max(1, inner - badges_vis) + _c("NOUS × NVIDIA", GOLDB) + "   " + pill + _c("│", GOLD))
+    print(blank)
+    print(_c("└" + "─" * inner + "┘", GOLD))
     _hold(4.5)
 
 
@@ -344,7 +386,7 @@ def main() -> int:
                  else ("MODELED fallback · no GPU", "yellow"))
 
     if args.presentation:
-        opener()
+        opener(policy)
         system_map()
         preflight(policy, hermes_disp, stripe_mode, gpu_state)
     else:
