@@ -49,7 +49,7 @@ RESEARCHER = "hermes.agent.researcher"
 PUBLISHER = "hermes.agent.publisher"
 VERB = {ALLOWED: "ALLOW", BLOCKED: "BLOCK", ESCALATE: "ESCALATE"}
 
-_ANSI = {"green": "92", "red": "91", "yellow": "93", "cyan": "96", "gold": "33", "dim": "2", "bold": "1"}
+_ANSI = {"green": "92", "red": "91", "yellow": "93", "cyan": "96", "gold": "33", "goldb": "1;33", "dim": "2", "bold": "1"}
 
 
 def _c(text: str, color: str | None) -> str:
@@ -62,13 +62,16 @@ def _decision_color(decision: str) -> str:
     return {ALLOWED: "green", BLOCKED: "red", ESCALATE: "yellow"}.get(decision, "cyan")
 
 
-_HOLD_SECONDS = 0.0   # set by main(); a brief pause after each card so the take is easy to cut (skip with --no-anim)
+_HOLD_MODE = "normal"   # set by main(): "off" (--no-anim) | "normal" | "presentation" (--presentation)
 
 
-def _hold(seconds: float | None = None) -> None:
-    s = _HOLD_SECONDS if seconds is None else seconds
-    if s > 0:
-        time.sleep(s)
+def _hold(normal: float = 0.8, *, pres: float | None = None) -> None:
+    """Pause for recordability. normal mode -> `normal` s; presentation -> `pres` (or `normal`); off -> 0."""
+    if _HOLD_MODE == "off":
+        return
+    secs = (pres if pres is not None else normal) if _HOLD_MODE == "presentation" else normal
+    if secs > 0:
+        time.sleep(secs)
 
 
 # ---------------------------------------------------------------- rendering
@@ -98,6 +101,19 @@ def banner() -> None:
     print(_c("╰" + "─" * (w - 2) + "╯", "gold"))
 
 
+def _check_lines(policy, hermes_disp, stripe_mode, gpu_state):
+    lim = policy.limits
+    return [
+        (f"Constitution loaded — {policy.policy_version}", "green"),
+        (f"Caps armed — ${lim.max_usd_per_task:,.0f} / {lim.max_joules_per_task:,.0f} J / {lim.max_runtime_seconds:.0f} s", "green"),
+        (f"Credential scopes loaded ({len(policy.credentials.allowed_scopes)})", "green"),
+        (f"Hermes runtime: {hermes_disp[0]}", hermes_disp[1]),
+        (f"Stripe treasury: {stripe_mode[0]}", stripe_mode[1]),
+        (f"NVIDIA telemetry: {gpu_state[0]}", gpu_state[1]),
+        ("Reality Ledger armed", "green"),
+    ]
+
+
 def intro(policy, hermes_disp, stripe_mode, gpu_state, no_anim: bool) -> None:
     def s(t: float):
         if not no_anim:
@@ -108,19 +124,68 @@ def intro(policy, hermes_disp, stripe_mode, gpu_state, no_anim: bool) -> None:
                  "NVIDIA measures compute.", "Landauer enforces the cap."):
         print("  " + line); s(0.14)
     print("\nInitializing..."); s(0.25)
-    lim = policy.limits
-    checks = [
-        (f"Constitution loaded — {policy.policy_version}", "green"),
-        (f"Caps armed — ${lim.max_usd_per_task:,.0f} / {lim.max_joules_per_task:,.0f} J / {lim.max_runtime_seconds:.0f} s", "green"),
-        (f"Credential scopes loaded ({len(policy.credentials.allowed_scopes)})", "green"),
-        (f"Hermes runtime: {hermes_disp[0]}", hermes_disp[1]),
-        (f"Stripe treasury: {stripe_mode[0]}", stripe_mode[1]),
-        (f"NVIDIA telemetry: {gpu_state[0]}", gpu_state[1]),
-        ("Reality Ledger armed", "green"),
-    ]
-    for text, col in checks:
+    for text, col in _check_lines(policy, hermes_disp, stripe_mode, gpu_state):
         print("  " + _c("✓", col) + " " + _c(text, col)); s(0.26)
     print()
+
+
+def opener(badge: str = "NOUS × NVIDIA") -> None:
+    w = 74
+    inner = w - 2
+    def fl(content: str = "") -> str:
+        return _c("║" + content.ljust(inner) + "║", "gold")
+    def fc(content: str, color: str = "gold") -> str:
+        return _c("║" + content.center(inner) + "║", color)
+    tag3 = "     Landauer leaves the receipt."
+    badge_str = f"[ {badge} ]"
+    pad = max(2, inner - len(tag3) - len(badge_str))
+    print(_c("╔" + "═" * inner + "╗", "gold"))
+    print(fl())
+    print(fc("L A N D A U E R", "goldb"))
+    print(fc("Runtime Constitution for Hermes Agents"))
+    print(fl())
+    print(fl("   Available Controls"))
+    print(fl("     spend caps  ·  joule caps  ·  credential scopes"))
+    print(fl("     runtime limits  ·  public-action review  ·  receipt ledger"))
+    print(fl())
+    print(fl("   Hermes Agent Runtime · Stripe Treasury · NVIDIA Telemetry · Ledger"))
+    print(fl())
+    print(fl("     Humans set the constitution."))
+    print(fl("     Hermes agents do the work."))
+    print(fl(tag3 + " " * pad + badge_str))
+    print(fl())
+    print(_c("╚" + "═" * inner + "╝", "gold"))
+    _hold(4.5)
+
+
+def system_map() -> None:
+    w = 64
+    inner = w - 2
+    def line(content: str, color: str) -> str:
+        return _c("│", "gold") + _c(content.ljust(inner), color) + _c("│", "gold")
+    print(_c("╭─ System Map " + "─" * (w - 15) + "╮", "gold"))
+    print(_c("│" + " " * inner + "│", "gold"))
+    for content, col in [
+        ("   Hermes agent proposes action", "cyan"),
+        ("            ↓", "dim"),
+        ("   Landauer checks policy before execution", "cyan"),
+        ("            ↓", "dim"),
+        ("   Stripe accounts for spend   ·   NVIDIA measures compute", "cyan"),
+        ("            ↓", "dim"),
+        ("   Reality Ledger writes receipt", "cyan"),
+    ]:
+        print(line(content, col))
+    print(_c("│" + " " * inner + "│", "gold"))
+    print(_c("╰" + "─" * inner + "╯", "gold"))
+    _hold(4.5)
+
+
+def preflight(policy, hermes_disp, stripe_mode, gpu_state) -> None:
+    rule("Preflight — live system checks")
+    for text, col in _check_lines(policy, hermes_disp, stripe_mode, gpu_state):
+        print("  " + _c("✓", col) + " " + _c(text, col))
+    print()
+    _hold(3.5)
 
 
 def constitution_card(policy) -> None:
@@ -136,7 +201,7 @@ def constitution_card(policy) -> None:
     for sc in policy.credentials.allowed_scopes:
         print(_c(f"     · {sc}", "dim"))
     print()
-    _hold()
+    _hold(0.8, pres=4.5)
 
 
 def decision_card(*, proposal: str, actor: str, decision: str, reason: str, receipt: str,
@@ -163,7 +228,7 @@ def decision_card(*, proposal: str, actor: str, decision: str, reason: str, rece
     rows.append(("Receipt:", receipt, "dim"))
     card("LANDAUER DECISION", rows)
     print()
-    _hold()
+    _hold(0.8, pres=6.0)
 
 
 def receipt_replay(record: dict) -> None:
@@ -180,6 +245,7 @@ def receipt_replay(record: dict) -> None:
     }
     print(_c(json.dumps(replay, indent=2), "cyan"))
     print()
+    _hold(0.8, pres=4.0)
 
 
 def accounting_table(results: list[dict]) -> None:
@@ -201,7 +267,7 @@ def accounting_table(results: list[dict]) -> None:
     print(_c("   As agent autonomy and spend grow, companies must see compute usage PER AGENT —", "yellow"))
     print(_c("   not only cloud/API spend.", "yellow"))
     print()
-    _hold()
+    _hold(0.8, pres=6.0)
 
 
 def scoreboard(results: list[dict]) -> None:
@@ -218,7 +284,7 @@ def scoreboard(results: list[dict]) -> None:
     print(f"   {n} proposals checked · " + _c(f"{a} allowed", "green") + " · "
           + _c(f"{b} blocked", "red") + " · " + _c(f"{e} escalated", "yellow")
           + f" · {n} receipts written")
-    _hold()
+    _hold(0.8, pres=2.0)
 
 
 def end_card() -> None:
@@ -231,7 +297,7 @@ def end_card() -> None:
     print(_c(ln("Hermes agents do the work."), "bold"))
     print(_c(ln("Landauer leaves the receipt."), "bold"))
     print(_c("╰" + "─" * (w - 2) + "╯", "gold"))
-    _hold(1.0)
+    _hold(1.0, pres=6.0)
 
 
 # ---------------------------------------------------------------- the run
@@ -245,11 +311,13 @@ def main() -> int:
     ap.add_argument("--gpu-seconds", type=float, default=2.5, help="allowed-compute window (kept under the joule cap)")
     ap.add_argument("--hermes-path", default=HERMES_WIN)
     ap.add_argument("--no-anim", action="store_true", help="skip the intro timing (for re-takes / CI)")
+    ap.add_argument("--presentation", action="store_true",
+                    help="cinematic recording mode: opener art, system map, long per-section holds")
     ap.add_argument("--keep-ledger", action="store_true", help="append instead of clearing the ledger")
     args = ap.parse_args()
 
-    global _HOLD_SECONDS
-    _HOLD_SECONDS = 0.0 if args.no_anim else 0.8   # brief per-card hold for recordability; --no-anim = instant
+    global _HOLD_MODE
+    _HOLD_MODE = "off" if args.no_anim else ("presentation" if args.presentation else "normal")
 
     policy = load_policy(args.policy)
     ledger = Ledger(args.ledger)
@@ -275,7 +343,12 @@ def main() -> int:
                  else ("nvidia-smi REAL · CPU workload", "green") if nvidia.available()
                  else ("MODELED fallback · no GPU", "yellow"))
 
-    intro(policy, hermes_disp, stripe_mode, gpu_state, args.no_anim)
+    if args.presentation:
+        opener()
+        system_map()
+        preflight(policy, hermes_disp, stripe_mode, gpu_state)
+    else:
+        intro(policy, hermes_disp, stripe_mode, gpu_state, args.no_anim)
     constitution_card(policy)
 
     results: list[dict] = []
@@ -299,6 +372,8 @@ def main() -> int:
         res = treasury.charge(42.00, "Landauer demo — small API action")
         d.stripe_object_id = res["stripe_object_id"]
         stripe_obj = res["stripe_object_id"] if res["real"] else None
+        if stripe_obj:
+            print(_c(f"   Stripe TEST receipt: {stripe_obj} · $42.00 · succeeded (test)", "cyan"))
     rec = ledger.write(d, runtime_seconds=3)
     decision_card(proposal="stripe.small_api_action", actor=OPERATOR, decision=d.decision, reason=d.reason,
                   receipt=rec["receipt_id"], usd=42.00, usd_cap=cap_usd, stripe_obj=stripe_obj, human_approved=True)
@@ -363,7 +438,7 @@ def main() -> int:
                   receipt=rec_s4["receipt_id"], joules=18400, joules_cap=cap_j, joules_label="projected",
                   human_approved=True)
     print(_c("   ↳ a human approved this job — approval is not a bypass; the joule cap is enforced below the human.\n", "dim"))
-    _hold(0.8)
+    _hold(0.8, pres=3.0)
     results.append({"actor": RESEARCHER, "label": "Human-approved GPU job blocked", "decision": d.decision,
                     "reason": d.reason, "usd_spent": 0.0, "joules": 18400, "projected": True})
 
