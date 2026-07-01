@@ -1,4 +1,7 @@
-# Landauer — Demo Video Script (v3 — pipeline built, renders clean)
+# Landauer — Demo Video Script (archival — dev planning notes)
+
+> **Archival — internal video-planning notes.** Production planning for the demo video; not part of the
+> Landauer product or the current submission surface. Kept for reference only.
 
 > **Pipeline status:** `make_frames.py` + `build_video.py` ported & rewritten for these 8 beats. The current
 > MODELED dev-box run renders all 8 frames with no tofu/overflow and assembles to **`landauer-demo.mp4` (1:57)**.
@@ -43,7 +46,7 @@
 | 3 | **Approval changes the run** | 0:38–0:58 | Re-run with `--approve`: the 6 flip **PENDING → HUMAN-APPROVED**; labels visibly change. | "A human approves. The labels flip — pending to human-approved — and the agent is cleared to act. Approval decides *what runs*. Watch what it can't move." |
 | 4 | **REAL telemetry — the judge-decider** | 0:58–1:25 | **(LONGEST, most memorable.)** Split screen: live `nvidia-smi` terminal **next to** the dashboard Energy panel — gold power sparkline (shaded area = ∫P·dt), pill **REAL · nvidia-smi**. (4070 run JSON + raw nvidia-smi) | "This is not a model. Same instant, two views: raw nvidia-smi on the left, Landauer's ledger on the right. Real watts, integrated to real Joules. The shaded area *is* the energy this agent spent." |
 | 5 | **Two independent caps + the orthogonal energy BLOCK** | 1:25–1:48 | Energy Governance hero: dual USD+Joules P&L; the `gpu-render-batch` BLOCK row + caption **"money would have allowed it ($5 ≤ $300); the physics cap refused it."** Note: this action was *approved* and *within budget*. | "Two caps approval cannot touch. This action is approved and well inside its dollar budget — but it would burn past the energy budget. Money would have allowed it. Physics refused it." |
-| 6 | **Reality Ledger + tamper detection** | 1:48–2:05 | Reality Ledger matrix (REAL/MODELED/THEORETICAL/SIMULATED incl. energy rows) → pan the hash-chained ledger `Energy (J)` column → cut to `eval_skill.py` tamper line: alter one Joule, chain breaks. | "Every step is a SHA-256-chained receipt — energy columns inside the chain. Change a single Joule, and every row after it breaks. The ledger can't be quietly edited." |
+| 6 | **Reality Ledger + tamper detection** | 1:48–2:05 | Reality Ledger matrix (REAL/MODELED/THEORETICAL/SIMULATED incl. energy rows) → pan the hash-chained ledger `Energy (J)` column → cut to `eval_skill.py` verification: editing a committed Joule fails the chain check. | "Every step is a SHA-256-chained receipt — energy columns inside the chain. Edit a committed Joule after the fact and the chain no longer verifies. The ledger resists quiet edits." |
 | 7 | **Spawn inherits the budget** | 2:05–2:15 | Agent Company Chain: gen 1 → 2 → 3; "energy budget inherited down the chain" (spawned-cofounder.yaml). | "It spawns the next generation — which inherits the same caps and the same ledger. Autonomy cannot escape accounting by creating more autonomy." |
 | 8 | **Skill / scale + close** | 2:15–2:22 | Installable `SKILL.md` + `./install.sh`; regime card: laptop → **this 4070** → designed for DGX-class (same policy + accounting contract). | "Ships as an installable Hermes skill. The same policy structure and accounting contract runs on a laptop, on this 4070, and is built for DGX-class hardware. **Landauer. Agents that cannot outrun reality.**" |
 
@@ -66,5 +69,5 @@
 - **"Capability" cap wording (Beat 5):** the two caps approval can't lift are **money (USD budget)** and **energy (Joules)**. The thesis sometimes frames the pair as "capability + energy"; the script keeps the strongest, true version — capability gates are the *soft* layer (approval clears, Beats 2–3), and the *hard* caps are money + energy (Beat 5). Confirm you're happy with that layering.
 
 ## Production notes (next chunk, post-capture)
-- Port `~/protos/hackathon/video/` — `make_frames.py` (4K Pillow stills) + `build_video.py` (Ken-Burns + xfade, 1080p). Toolchain proven here (ffmpeg 8.1.1, Pillow 12.2.0). **Rewrite** the SCENES + frame renderers for the 8 beats above and repoint data to Landauer's `out/run-*/` (`energy-report.json`, `audit-ledger.json`). Protos frames are style reference only (money-only, no energy beats).
+- Port the earlier video toolchain — `make_frames.py` (4K Pillow stills) + `build_video.py` (Ken-Burns + xfade, 1080p). Toolchain proven here (ffmpeg 8.1.1, Pillow 12.2.0). **Rewrite** the SCENES + frame renderers for the 8 beats above and repoint data to Landauer's `out/run-*/` (`energy-report.json`, `audit-ledger.json`). The earlier frames are style reference only (money-only, no energy beats).
 - Render Beats 4 & 5 from the **4070** run JSON (REAL pills); Beat 4's nvidia-smi side-by-side is a live screen capture during the canonical run; Beats 1,2,3,6,7,8 render from any run.
