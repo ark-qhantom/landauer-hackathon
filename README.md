@@ -1,59 +1,67 @@
-# Landauer — a runtime constitution for autonomous agents
+# Landauer — Runtime Constitution for the Agent Economy
 
-*Runtime governance for autonomous agents · built for the Nous × NVIDIA hackathon*
+*Pre-execution guardrails for Hermes agents that spend, earn, compute, use credentials, and touch the real world.*
 
-**Landauer is the governance layer that sits between an autonomous agent and the world.** It gates every
-action an agent proposes — **spend, compute, energy, credentials, and public/irreversible actions** —
-against a human-defined policy *before* execution, then records every decision as an auditable receipt.
+**Landauer is the authority layer for autonomous agents.** It gates every action a Hermes agent proposes
+— **spend, earnings, compute, energy, credentials, and public/irreversible actions** — against a
+human-defined constitution **before execution**, then records every decision as an auditable receipt.
+
+As agents move from assistants to operators, they will increasingly spend, earn, consume compute, use
+credentials, and create public outcomes for companies and individuals. Landauer is built for that
+transition: a runtime constitution that gives agents authority inside enforceable limits, with receipts
+for every decision. **Agent capability is becoming abundant; agent authority is the bottleneck.**
 
 > **The cap is enforced *below* the human.** A human may approve an action, but approval cannot lift a
 > hard resource cap unless the constitution explicitly grants override. One click of *yes* cannot bribe a
 > dollar or a joule limit.
 
-Landauer runs a **Hermes** agent against real work. **Stripe** backs the budget, **NVIDIA** measures the
-compute, and Landauer decides — allow, block, or escalate — and writes the receipt.
-
-| System | Role in Landauer |
-|---|---|
-| **Hermes** | agent runtime — proposes the action |
-| **NVIDIA** | GPU telemetry — real power, runtime, joules (∫P·dt via `nvidia-smi`) |
-| **Stripe** | treasury — budget + real test-mode spend |
-| **Landauer** | policy engine — allow / block / escalate, then write the receipt |
+- **Humans** define the operating envelope — the constitution.
+- **Hermes agents** do the work — they propose the actions.
+- **Landauer** governs that authority *before actions reach the real world*, writing a receipt for every
+  **allow / block / escalate** decision.
 
 *Named for Landauer's principle — that computation has an irreducible physical energy cost. Landauer
 makes that cost, and its dollar and permission counterparts, a first-class, enforceable policy limit.*
+
+## Demo
+
+- X demo post: https://x.com/ark_qhantom/status/2072135934527541432
+- Built for: Hermes Agent Accelerated Business Hackathon
 
 ---
 
 ## The problem
 
-AI agents are moving from *generating text* to *taking action*: calling APIs, spending money, using
-credentials, and consuming GPU resources. The controls we have are weak — asking a human every time
-doesn't scale, prompt-level safety isn't enforcement, and API/GPU spend is easy to blow up via runaway
-loops and retries before anyone sees the bill.
+AI agents are moving from *generating text* to *taking action*: earning and spending money, using
+credentials, consuming GPU compute, and creating public outcomes. The controls we have are weak — asking
+a human every time doesn't scale, prompt-level safety isn't enforcement, and API/GPU spend is easy to
+blow up via runaway loops and retries before anyone sees the bill.
 
-Landauer is the middle layer: **autonomous enough to be useful, bounded enough to be trusted.** Dollars
-are economic limits, permissions are institutional limits, **joules are physical limits** — together they
-make Landauer more than a spend-management or logging tool. Humans define the policy once; agents operate
-autonomously within it; every action leaves a receipt.
+Landauer is the authority layer between the agent and the world: **autonomous enough to be useful,
+bounded enough to be trusted.** Dollars are economic limits, permissions are institutional limits,
+**joules are physical limits** — enforced *before execution*, not observed after the fact. Humans define
+the envelope once; agents operate autonomously within it; every action leaves a receipt.
+
+The agent can still draft, reason, and prepare work. Landauer only gates the final external or
+irreversible step when policy requires review.
 
 ---
 
 ## What Landauer enforces
 
-Every decision — allow, block, *and* escalate — is written to the ledger as a receipt.
+Every decision — allow, block, *and* escalate — is checked *before execution* and written as a receipt.
 
 | Governed dimension | Example action | Landauer's decision |
 |---|---|---|
 | **Spend cap** | agent spends **$42** on an API model (cap $500) | **ALLOW** → real Stripe test charge (`pi_…`), receipt written |
-| **Spend cap** | agent tries to spend **$4,800** (> $500) | **BLOCK** *before* execution — `usd_cap_exceeded`, no charge made |
+| **Spend cap** | agent tries to spend **$4,800** (> $500) | **BLOCK** *before* the charge — `usd_cap_exceeded`, no money moves |
 | **Energy cap** | real GPU job, **520 J** measured (cap 1,000 J) | **ALLOW** — real `nvidia-smi` ∫P·dt, under cap |
 | **Energy cap, below the human** | **human-approved** GPU job, ~18,000 J projected | **BLOCK** — `joule_cap_exceeded` *despite* approval |
 | **Credential scope** | agent tries to export customer PII | **BLOCK** — `credential_scope_denied` (scope not granted) |
 | **Public / irreversible** | agent wants to post publicly | **ESCALATE** — routed to a human |
 
 Most actions are auto-decided by policy; a human is pulled in only on `escalate`. That is the point:
-**scale agent labor without scaling human supervision linearly.**
+**scale agent authority without scaling human supervision linearly.**
 
 ---
 
@@ -103,8 +111,8 @@ credentials:
 
 ## The receipt
 
-Every decision — allowed, blocked, *and* escalated — is one JSONL receipt in
-[`ledger/landauer_events.jsonl`](ledger/landauer_events.jsonl):
+Every decision is written to a generated JSONL ledger at `ledger/landauer_events.jsonl`. Example receipts
+are included in [`submission-artifacts/real-run-4070/`](submission-artifacts/real-run-4070/).
 
 ```
 timestamp · receipt_id · agent_id · policy_version · action · human_approved ·
@@ -117,33 +125,42 @@ Reason codes: `within_policy`, `human_approval_missing`, `usd_cap_exceeded`, `jo
 
 ---
 
-## Integrations — real, not mocked
+## Integrations — real, before execution
 
-- **Hermes** ([`landauer/adapters/hermes.py`](landauer/adapters/hermes.py)) — a tight, single-shot call
-  (no skill-loading) asks Hermes to propose the next action as strict JSON. Deterministic, clearly
-  labeled fallback if inference errors; we never report a success we didn't get.
-- **NVIDIA** ([`landauer/adapters/nvidia.py`](landauer/adapters/nvidia.py)) — wraps `telemetry.py`'s
-  `NvidiaSmiProvider` + `EnergyMeter`; **measures** real joules (∫P·dt over live `nvidia-smi` samples)
-  and **projects** joules (E ≈ P·t) for the pre-execution gate. A real `torch` GPU load
-  ([`gpu_workload.py`](landauer/adapters/gpu_workload.py)) makes the numbers meaningful — real measured
-  wattage on an RTX 4070 Ti SUPER (see [`4070-CAPTURE.md`](4070-CAPTURE.md)).
-- **Stripe** ([`landauer/adapters/stripe_budget.py`](landauer/adapters/stripe_budget.py)) — a test-mode
-  treasury; an **allowed** spend creates a real `PaymentIntent` (real `pi_/ch_` id), a **blocked** spend
-  never reaches Stripe. No live key is ever used.
+Landauer checks each proposed action *before it reaches the real world*, using real signals from each system.
+
+**Hermes** ([`landauer/adapters/hermes.py`](landauer/adapters/hermes.py))
+- Hermes agents propose the actions.
+- Landauer checks those actions before execution.
+- A tight, single-shot call asks Hermes for the next action as strict JSON; a clearly-labeled
+  deterministic fallback covers inference errors — we never report a success we didn't get.
+
+**Stripe** ([`landauer/adapters/stripe_budget.py`](landauer/adapters/stripe_budget.py))
+- Stripe accounts for agent spend.
+- Landauer decides whether that spend is allowed.
+- The demo uses Stripe **test-mode spend proof**: an allowed spend creates a real `PaymentIntent`
+  (`pi_…`), a blocked spend never reaches Stripe. No live key is ever used.
+
+**NVIDIA** ([`landauer/adapters/nvidia.py`](landauer/adapters/nvidia.py))
+- NVIDIA telemetry is not just powering inference.
+- NVIDIA telemetry becomes **evidence inside the policy decision**.
+- The demo uses `nvidia-smi` power/runtime readings to **measure or project joules** (∫P·dt over live
+  samples), so the energy cap is enforced on real physics — not a guess.
 
 ---
 
 ## Where it fits
 
 Companies don't want agents that ask permission for every tiny action, and they cannot accept agents that
-act without limits. Landauer is the middle layer: humans define policy once, agents operate autonomously
-within it, and every action receives a receipt showing the policy version, approval state, dollar cost,
-compute/energy use, and final decision.
+act without limits. Landauer is the authority layer: humans define policy once, agents operate
+autonomously within it, and every action receives a receipt showing the policy version, approval state,
+dollar cost, compute/energy use, and final decision — decided *before* the action runs.
 
 **Concrete use cases — each maps to something the demo actually enforces:**
 - a **support agent capped at $X per ticket** — overspend blocked *before* the API call
+- an **earning/ops agent** metered on real Stripe test-mode spend, allowed only within its budget
 - a **data-pipeline agent that cannot export customer PII** without an approved credential scope (`export_customer_data` → `credential_scope_denied`)
-- an **outbound/social agent** whose public posts are always routed to a human (`public_post` → `escalate`)
+- an **outbound/social agent** whose public posts are routed to a human (`public_post` → `escalate`)
 - a **local-inference fleet** with a hard per-job joule budget, enforced *below* the operator who approved it
 
 ---
@@ -168,7 +185,8 @@ test_landauer.py               core verifier (no GPU/Stripe/Hermes needed)
 ```
 
 The decision kernel (`landauer/decision.py`) performs **no I/O** — adapters supply estimates and execute
-side effects only after an `allowed` decision, so the gate stays deterministic and unit-testable.
+side effects only after an `allowed` decision, so the gate stays deterministic, pre-execution, and
+unit-testable.
 
 ---
 
@@ -187,6 +205,6 @@ more real than it is.
 
 ---
 
-> **Humans set the rules. Agents do the work. Landauer leaves the receipt.**
+> **Humans set the rules. Hermes agents do the work. Landauer leaves the receipt.**
 
-<sub>Built for the Nous × NVIDIA hackathon · RTX AI Garage. Validated on an RTX 4070 Ti SUPER.</sub>
+<sub>Built for the Hermes Agent Accelerated Business Hackathon. Validated on an RTX 4070 Ti SUPER with real `nvidia-smi` telemetry.</sub>
