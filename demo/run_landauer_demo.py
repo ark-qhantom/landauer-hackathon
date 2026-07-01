@@ -40,8 +40,9 @@ from landauer.adapters import gpu_workload, hermes as hermes_adapter, nvidia
 from landauer.adapters.stripe_budget import StripeBudgetAdapter
 from hermes_bridge import hermes_available
 
-HERMES_WIN = os.environ.get(
-    "HERMES_PATH", r"C:\Users\BB2SM\AppData\Local\hermes\hermes-agent\venv\Scripts\hermes.exe")
+HERMES_WIN = os.environ.get("HERMES_PATH") or os.path.join(
+    os.environ.get("LOCALAPPDATA", ""),
+    "hermes", "hermes-agent", "venv", "Scripts", "hermes.exe")
 POWER_EST_W = 285.0   # TGP — conservative MODELED power for the pre-execution joule projection
 
 OPERATOR = "hermes.agent.operator"
